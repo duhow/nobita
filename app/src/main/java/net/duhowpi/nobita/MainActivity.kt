@@ -167,7 +167,22 @@ class MainActivity : AppCompatActivity() {
         startActivity(Intent.createChooser(intent, if (share) getString(R.string.share_capture) else getString(R.string.open_capture)))
     }
 
-    private fun bindUserService() { Shizuku.bindUserService(userServiceArgs(), connection) }
+    private fun bindUserService() {
+        if (!Shizuku.pingBinder()) {
+            status.text = getString(R.string.shizuku_not_ready)
+            return
+        }
+        if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
+            status.text = "Shizuku authorization is required before connecting"
+            return
+        }
+        try {
+            Shizuku.bindUserService(userServiceArgs(), connection)
+        } catch (error: SecurityException) {
+            userService = null
+            status.text = "Shizuku authorization is required before connecting"
+        }
+    }
     private fun requireUserService(): ICaptureUserService {
         userService?.let { return it }
         check(Shizuku.pingBinder()) { "Shizuku is not running" }

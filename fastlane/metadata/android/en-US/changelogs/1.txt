@@ -3,4 +3,5 @@
 - Added paired and nearby device selection plus optional raw BTSnoop retention.
 - Added safe full-capture fallback when target filtering finds no packets.
 - Fixed startup crashes when connecting to Shizuku.
+- Prevented startup crashes when Shizuku authorization is missing.
 - Added packet and connection counts to export results.
