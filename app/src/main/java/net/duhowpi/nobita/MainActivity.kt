@@ -25,6 +25,7 @@ import androidx.core.content.ContextCompat
 import dev.rikka.shizuku.Shizuku
 import net.duhowpi.nobita.capture.CaptureForegroundService
 import net.duhowpi.nobita.capture.CaptureSession
+import net.duhowpi.nobita.capture.TargetHistory
 import net.duhowpi.nobita.shizuku.CaptureUserService
 import net.duhowpi.nobita.shizuku.ICaptureUserService
 import net.duhowpi.nobita.export.CaptureFileStore
@@ -56,6 +57,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.choose_paired).setOnClickListener { choosePairedDevice() }
         findViewById<Button>(R.id.scan_nearby).setOnClickListener { scanNearby() }
         findViewById<Button>(R.id.battery_settings).setOnClickListener { startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
+        findViewById<Button>(R.id.choose_recent).setOnClickListener { chooseRecentTarget() }
         findViewById<Button>(R.id.open_capture).setOnClickListener { openOrShare(false) }
         findViewById<Button>(R.id.share_capture).setOnClickListener { openOrShare(true) }
         CaptureSession.load(this)?.let { session ->
@@ -85,7 +87,9 @@ class MainActivity : AppCompatActivity() {
                 runOnUiThread {
                     val environment = result.substringAfter("previous=", "disabled").substringBefore(" initialBluetooth=")
                     val initialBluetooth = result.substringAfter("initialBluetooth=", "true").toBoolean()
-                    CaptureSession(System.currentTimeMillis(), findViewById<android.widget.EditText>(R.id.target).text.toString(), environment, initialBluetooth).save(this)
+                    val target = findViewById<android.widget.EditText>(R.id.target).text.toString()
+                    TargetHistory.add(this, target)
+                    CaptureSession(System.currentTimeMillis(), target, environment, initialBluetooth).save(this)
                     status.text = "Capture active: $result"
                     ContextCompat.startForegroundService(this, Intent(this, CaptureForegroundService::class.java))
                     findViewById<Button>(R.id.start_capture).visibility = android.view.View.GONE
@@ -156,6 +160,11 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this).setTitle(R.string.choose_paired).setItems(labels) { _, which ->
             findViewById<android.widget.EditText>(R.id.target).setText(devices[which].address)
         }.show()
+    }
+    private fun chooseRecentTarget() {
+        val targets = TargetHistory.list(this)
+        if (targets.isEmpty()) { status.text = getString(R.string.no_recent_targets); return }
+        AlertDialog.Builder(this).setTitle(R.string.choose_recent).setItems(targets.toTypedArray()) { _, which -> findViewById<android.widget.EditText>(R.id.target).setText(targets[which]) }.show()
     }
     private fun scanNearby() {
         if (Build.VERSION.SDK_INT >= 31 && checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
