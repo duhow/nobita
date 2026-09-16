@@ -103,6 +103,7 @@ class ConnectionTracker {
         connections.values.filter { it.address == address }.forEach { it.name = name }
     }
     fun connectionCount(): Int = seenHandles.size
+    fun connectionHandles(): Set<Int> = seenHandles.toSet()
     fun pendingClassicAddresses(): Set<String> = pendingClassicAddresses.toSet()
     private fun address(packet: ByteArray, offset: Int) = (0..5).joinToString(":") { "%02X".format(packet[offset + 5 - it].toInt() and 0xff) }
     private fun readLe16(packet: ByteArray, offset: Int) = (packet[offset].toInt() and 0xff) or ((packet[offset + 1].toInt() and 0xff) shl 8)

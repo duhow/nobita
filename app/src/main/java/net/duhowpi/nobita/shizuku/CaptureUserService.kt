@@ -88,7 +88,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
                     if (PacketFilter.matches(record, connection, target)) { writer.write(record); written++ }
                 }
             } }
-            lastExportSummary = "Capture: $captureType; target: ${target.ifBlank { "All devices" }}; packets: $total; target packets: $written; connections: ${handles.size}; ATT packets: $attPackets"
+            lastExportSummary = "Capture: $captureType; target: ${target.ifBlank { "All devices" }}; packets: $total; target packets: $written; connections: ${handles.size}; handles: ${formatHandles(handles)}; ATT packets: $attPackets"
             if (target.isNotBlank() && written == 0) error("No packets matched target; raw capture preserved for full export")
             PcapngValidator.validate(generated)
             if (saveRaw) rawFile.copyTo(File(directory, "${base}_$stamp.btsnoop"), overwrite = true)
@@ -125,7 +125,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
                     total++
                 }
             } }
-            lastExportSummary = "Packets: $total; target packets: $total; connections: ${tracker.connectionCount()}; ATT packets: $attPackets"
+            lastExportSummary = "Packets: $total; target packets: $total; connections: ${tracker.connectionCount()}; handles: ${formatHandles(tracker.connectionHandles())}; ATT packets: $attPackets"
             PcapngValidator.validate(output)
             raw.delete()
             return output.absolutePath
@@ -142,6 +142,8 @@ class CaptureUserService : ICaptureUserService.Stub() {
         captureDirectory().listFiles { file -> file.name.startsWith(".pending-") && file.name.endsWith(".btsnoop") }
             ?.forEach { it.delete() }
     }
+
+    private fun formatHandles(handles: Set<Int>) = handles.sorted().joinToString(",") { "0x%04X".format(Locale.US, it) }.ifEmpty { "none" }
 
     override fun restoreCaptureEnvironment(previousMode: String, previousDefaultMode: String, propertyModeChanged: Boolean, bluetoothInitiallyEnabled: Boolean) {
         // Capture assumes the user's Bluetooth snoop configuration is already enabled.
