@@ -199,7 +199,7 @@ class MainActivity : AppCompatActivity() {
                     findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE
                 }
             } catch (error: Exception) {
-                val pending = runCatching { userService?.hasPendingCapture() == true }.getOrDefault(false)
+                val pending = runCatching { userService?.hasPendingCapture(CaptureSession.load(this)?.captureId.orEmpty()) == true }.getOrDefault(false)
                 runOnUiThread {
                     status.text = error.message ?: "Export failed"
                     if (pending) {
@@ -244,7 +244,7 @@ class MainActivity : AppCompatActivity() {
                 val uri = CaptureFileStore.importPcapng(this, exported.first)
                 runOnUiThread { CaptureSession.clear(this); exportedUri = uri; showCaptureComplete(exported.second); status.text = "Full capture complete: ${exported.second}"; findViewById<Button>(R.id.export_full).visibility = android.view.View.GONE; findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE; resetButtons() }
             } catch (error: Exception) {
-                val pending = runCatching { userService?.hasPendingCapture() == true }.getOrDefault(false)
+                val pending = runCatching { userService?.hasPendingCapture(CaptureSession.load(this)?.captureId.orEmpty()) == true }.getOrDefault(false)
                 runOnUiThread {
                     status.text = error.message ?: "Full export failed"
                     if (!pending) {
@@ -340,7 +340,7 @@ class MainActivity : AppCompatActivity() {
         if (session.state() !is CaptureState.ExportPending) return
         val service = userService ?: return
         Thread {
-            val pending = runCatching { service.hasPendingCapture() }.getOrDefault(true)
+            val pending = runCatching { service.hasPendingCapture(session.captureId) }.getOrDefault(true)
             if (!pending) runOnUiThread {
                 CaptureSession.clear(this)
                 resetButtons()

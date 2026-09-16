@@ -30,3 +30,4 @@
 - Surface unexpected live stream interruptions and recoverable packet progress.
 - Bound full-capture recovery to the original capture session.
 - Exposed capture status through a versioned machine-readable response.
+- Prevented recovery checks from selecting another capture session.

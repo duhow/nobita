@@ -191,9 +191,10 @@ class CaptureUserService : ICaptureUserService.Stub() {
             else -> captureStatusJson("IDLE", 0, 0, null)
         }
     }
-    override fun hasPendingCapture(): Boolean = captureDirectory()
-        .listFiles { file -> file.name.startsWith(".pending-") && file.name.endsWith(".btsnoop") }
-        ?.isNotEmpty() == true
+    override fun hasPendingCapture(captureId: String): Boolean {
+        if (!captureId.matches(Regex("[0-9a-f]{32}"))) return false
+        return File(captureDirectory(), ".pending-$captureId.btsnoop").isFile
+    }
 
     override fun abortCapture() {
         synchronized(lifecycleLock) {

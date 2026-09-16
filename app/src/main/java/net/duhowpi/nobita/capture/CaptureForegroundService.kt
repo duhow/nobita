@@ -96,7 +96,7 @@ class CaptureForegroundService : Service() {
                         success = true
                         updateNotification("${boundService.getLastExportSummary()} — exported to Downloads/BluetoothCaptures")
                     } catch (error: Exception) {
-                        if (runCatching { service?.hasPendingCapture() == true }.getOrDefault(false)) {
+                        if (runCatching { service?.hasPendingCapture(session.captureId) == true }.getOrDefault(false)) {
                             CaptureSession.load(this@CaptureForegroundService)?.copy(exportPending = true, stage = CaptureStage.EXPORT_PENDING)?.save(this@CaptureForegroundService)
                         } else {
                             CaptureSession.clear(this@CaptureForegroundService)
