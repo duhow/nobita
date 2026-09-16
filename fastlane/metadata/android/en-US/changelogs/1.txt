@@ -1,1 +1,2 @@
 - Initial Nobita application setup.
+- Added local Shizuku-backed Bluetooth HCI capture and PCAPNG export.

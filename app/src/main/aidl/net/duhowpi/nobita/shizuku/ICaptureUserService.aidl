@@ -2,6 +2,6 @@ package net.duhowpi.nobita.shizuku;
 
 interface ICaptureUserService {
     String prepareCapture();
-    String exportBtsnoop();
+    String exportPcapng(String target);
     void restoreCaptureEnvironment();
 }

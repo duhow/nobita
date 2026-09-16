@@ -5,6 +5,10 @@ import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
 import java.util.zip.ZipFile
+import net.duhowpi.nobita.btsnoop.BtsnoopReader
+import net.duhowpi.nobita.hci.ConnectionTracker
+import net.duhowpi.nobita.hci.PacketFilter
+import net.duhowpi.nobita.pcapng.PcapngWriter
 
 class CaptureUserService : ICaptureUserService.Stub() {
     private var previousMode: String? = null
@@ -20,19 +24,29 @@ class CaptureUserService : ICaptureUserService.Stub() {
         return "uid=${Process.myUid()} mode=full"
     }
 
-    override fun exportBtsnoop(): String {
+    override fun exportPcapng(target: String): String {
         val lines = commandLines("/system/bin/bugreportz", "-p")
         val path = lines.firstOrNull { it.startsWith("OK:") }?.removePrefix("OK:")?.trim()
             ?: error(lines.lastOrNull { it.startsWith("FAIL:") } ?: "bugreportz did not complete")
-        val output = File.createTempFile("nobita-", ".btsnoop", File("/data/local/tmp"))
+        val raw = File.createTempFile("nobita-", ".btsnoop", File("/data/local/tmp"))
         ZipFile(path).use { zip ->
             val entry = zip.entries().asSequence().filter { !it.isDirectory }
                 .map { it to score(it.name) }.filter { it.second > 0 }
                 .maxByOrNull { it.second }?.first ?: error("No BTSnoop file found")
-            zip.getInputStream(entry).use { input -> output.outputStream().use { input.copyTo(it) } }
+            zip.getInputStream(entry).use { input -> raw.outputStream().use { input.copyTo(it) } }
         }
-        restoreCaptureEnvironment()
         File(path).delete()
+        val directory = File("/sdcard/Download/BluetoothCaptures").apply { mkdirs() }
+        val output = File(directory, "capture-${System.currentTimeMillis()}.pcapng")
+        raw.inputStream().use { input -> PcapngWriter(output.outputStream()).use { writer ->
+            val tracker = ConnectionTracker()
+            for (record in BtsnoopReader.read(input)) {
+                val connection = tracker.connectionFor(record)
+                if (PacketFilter.matches(record, connection, target)) writer.write(record)
+            }
+        } }
+        raw.delete()
+        restoreCaptureEnvironment()
         return output.absolutePath
     }
 

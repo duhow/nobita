@@ -64,7 +64,8 @@ class MainActivity : AppCompatActivity() {
     private fun stopAndExport() {
         Thread {
             try {
-                val path = userService?.exportBtsnoop() ?: error("Shizuku UserService is not connected")
+                val target = findViewById<android.widget.EditText>(R.id.target).text.toString()
+                val path = userService?.exportPcapng(target) ?: error("Shizuku UserService is not connected")
                 runOnUiThread { status.text = "BTSnoop extracted: $path"; stopService(Intent(this, CaptureForegroundService::class.java)); resetButtons() }
             } catch (error: Exception) { runOnUiThread { status.text = error.message ?: "Export failed"; resetButtons() } }
         }.start()
