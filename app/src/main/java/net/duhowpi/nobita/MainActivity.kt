@@ -13,6 +13,9 @@ import android.widget.LinearLayout
 import androidx.core.content.FileProvider
 import java.io.File
 import android.os.PowerManager
+import android.Manifest
+import android.bluetooth.BluetoothAdapter
+import android.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -41,6 +44,7 @@ class MainActivity : AppCompatActivity() {
         requestNotifications()
         findViewById<Button>(R.id.start_capture).setOnClickListener { startCapture() }
         findViewById<Button>(R.id.stop_export).setOnClickListener { stopAndExport() }
+        findViewById<Button>(R.id.choose_paired).setOnClickListener { choosePairedDevice() }
         findViewById<Button>(R.id.open_capture).setOnClickListener { openOrShare(false) }
         findViewById<Button>(R.id.share_capture).setOnClickListener { openOrShare(true) }
         CaptureSession.load(this)?.let { session ->
@@ -112,6 +116,18 @@ class MainActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf("android.permission.POST_NOTIFICATIONS"), 20)
         }
+    }
+    private fun choosePairedDevice() {
+        if (Build.VERSION.SDK_INT >= 31 && checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.BLUETOOTH_CONNECT), 21)
+            return
+        }
+        val devices = BluetoothAdapter.getDefaultAdapter()?.bondedDevices?.sortedBy { it.name ?: it.address }.orEmpty()
+        if (devices.isEmpty()) { status.text = getString(R.string.no_paired_devices); return }
+        val labels = devices.map { "${it.name ?: "Unknown device"}\n${it.address}" }.toTypedArray()
+        AlertDialog.Builder(this).setTitle(R.string.choose_paired).setItems(labels) { _, which ->
+            findViewById<android.widget.EditText>(R.id.target).setText(devices[which].address)
+        }.show()
     }
     private fun elapsed(startedAt: Long): String = "${((System.currentTimeMillis() - startedAt) / 1000)}s"
     private fun <T> withWakeLock(block: () -> T): T {

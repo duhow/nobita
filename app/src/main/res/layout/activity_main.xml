@@ -28,6 +28,12 @@
         android:inputType="text" />
 
     <Button
+        android:id="@+id/choose_paired"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/choose_paired" />
+
+    <Button
         android:id="@+id/start_capture"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
