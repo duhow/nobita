@@ -6,3 +6,5 @@
 - Prevented startup crashes when Shizuku authorization is missing.
 - Added packet and connection counts to export results.
 - Added detected ATT packet counts to export results.
+- Battery optimization now opens Nobita's app-specific settings.
+- Nearby scanning shows progress and the number of devices found.

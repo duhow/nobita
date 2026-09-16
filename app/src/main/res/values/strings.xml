@@ -12,6 +12,8 @@
     <string name="choose_paired">Choose paired device</string>
     <string name="no_paired_devices">No paired Bluetooth devices found.</string>
     <string name="scan_nearby">Scan nearby devices</string>
+    <string name="scan_in_progress">Scanning nearby devices…</string>
+    <string name="scan_failed">Nearby scan failed (%1$d).</string>
     <string name="no_nearby_devices">No nearby Bluetooth devices found.</string>
     <string name="save_raw">Save raw BTSnoop too</string>
     <string name="export_full">Export full capture</string>

@@ -20,6 +20,7 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.app.AlertDialog
 import android.provider.Settings
+import android.view.animation.AnimationUtils
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -66,7 +67,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.export_full).setOnClickListener { exportFullCapture() }
         findViewById<Button>(R.id.choose_paired).setOnClickListener { choosePairedDevice() }
         findViewById<Button>(R.id.scan_nearby).setOnClickListener { scanNearby() }
-        findViewById<Button>(R.id.battery_settings).setOnClickListener { startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
+        findViewById<Button>(R.id.battery_settings).setOnClickListener { openBatteryOptimizationSettings() }
         findViewById<Button>(R.id.choose_recent).setOnClickListener { chooseRecentTarget() }
         findViewById<Button>(R.id.open_capture).setOnClickListener { openOrShare(false) }
         findViewById<Button>(R.id.share_capture).setOnClickListener { openOrShare(true) }
@@ -230,23 +231,51 @@ class MainActivity : AppCompatActivity() {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 23)
             return
         }
-        val scanner = bluetoothAdapter?.bluetoothLeScanner ?: run { status.text = getString(R.string.no_nearby_devices); return }
+        val scanner = bluetoothAdapter?.bluetoothLeScanner ?: run { showScanComplete(0); return }
         val found = linkedMapOf<String, BluetoothDevice>()
         val callback = object : ScanCallback() {
             override fun onScanResult(type: Int, result: ScanResult) { found[result.device.address] = result.device }
-            override fun onScanFailed(errorCode: Int) { runOnUiThread { status.text = "Bluetooth scan failed: $errorCode" } }
+            override fun onScanFailed(errorCode: Int) { runOnUiThread { showScanFailed(errorCode) } }
         }
-        status.text = "Scanning nearby devices..."
+        val scanStatus = findViewById<TextView>(R.id.scan_status)
+        val scanIndicator = findViewById<android.widget.ImageView>(R.id.scan_indicator)
+        scanStatus.text = getString(R.string.scan_in_progress)
+        scanIndicator.visibility = android.view.View.VISIBLE
+        scanIndicator.startAnimation(AnimationUtils.loadAnimation(this, R.anim.rotate))
         scanner.startScan(callback)
         android.os.Handler(mainLooper).postDelayed({
             scanner.stopScan(callback)
             val devices = found.values.sortedBy { it.name ?: it.address }
             runOnUiThread {
-                if (devices.isEmpty()) { status.text = getString(R.string.no_nearby_devices); return@runOnUiThread }
+                showScanComplete(devices.size)
+                if (devices.isEmpty()) return@runOnUiThread
                 AlertDialog.Builder(this).setTitle(R.string.scan_nearby)
                     .setItems(devices.map { "${it.name ?: "Unknown device"}\n${it.address}" }.toTypedArray()) { _, which -> findViewById<android.widget.EditText>(R.id.target).setText(devices[which].address) }.show()
             }
         }, 8_000)
+    }
+    private fun showScanComplete(count: Int) {
+        val indicator = findViewById<android.widget.ImageView>(R.id.scan_indicator)
+        indicator.clearAnimation()
+        indicator.visibility = android.view.View.GONE
+        findViewById<TextView>(R.id.scan_status).text = resources.getQuantityString(R.plurals.nearby_devices_found, count, count)
+    }
+    private fun showScanFailed(errorCode: Int) {
+        val indicator = findViewById<android.widget.ImageView>(R.id.scan_indicator)
+        indicator.clearAnimation()
+        indicator.visibility = android.view.View.GONE
+        findViewById<TextView>(R.id.scan_status).text = getString(R.string.scan_failed, errorCode)
+    }
+    private fun openBatteryOptimizationSettings() {
+        val direct = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+            .setData(Uri.parse("package:$packageName"))
+        try {
+            startActivity(direct)
+        } catch (_: SecurityException) {
+            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+        } catch (_: android.content.ActivityNotFoundException) {
+            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+        }
     }
     private fun elapsed(startedAt: Long): String = "${((System.currentTimeMillis() - startedAt) / 1000)}s"
     private val bluetoothAdapter: BluetoothAdapter?
