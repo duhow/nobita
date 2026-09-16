@@ -20,3 +20,4 @@
 - Preserved recoverable raw captures when the Shizuku service disconnects during export.
 - Prevented duplicate export requests while a capture is being processed.
 - Fixed duplicate bugreport generation when exporting from the Activity and notification.
+- Fixed full capture export failures for controller-to-host packets.

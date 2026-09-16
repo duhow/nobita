@@ -11,7 +11,7 @@ class PcapngWriter(private val output: OutputStream) : AutoCloseable {
 
     fun write(record: BtsnoopRecord) {
         val pseudoHeader = byteArrayOf(
-            (if (record.controllerToHost) 1 else 0).toByte(), 0, 0, 0,
+            0, 0, 0, (if (record.controllerToHost) 1 else 0).toByte(),
         )
         val packet = pseudoHeader + record.packet
         val paddedLength = (packet.size + 3) and -4
