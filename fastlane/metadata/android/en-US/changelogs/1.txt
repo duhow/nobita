@@ -52,3 +52,4 @@
 - Removed the redundant battery optimization button from the main screen.
 - Updated the launcher icon to use an adaptive dark background without a white wrapper circle.
 - Removed Kotlin and Android deprecation warnings from capture setup.
+- Reduced adaptive launcher icon size for correct display.
