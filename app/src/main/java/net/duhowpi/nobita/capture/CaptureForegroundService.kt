@@ -54,6 +54,9 @@ class CaptureForegroundService : Service() {
                     try {
                         val path = ICaptureUserService.Stub.asInterface(binder).exportPcapng(target, false, session.previousMode, session.bluetoothInitiallyEnabled)
                         CaptureFileStore.importPcapng(this@CaptureForegroundService, path)
+                        updateNotification("Capture exported to Downloads/BluetoothCaptures")
+                    } catch (error: Exception) {
+                        updateNotification("Capture export failed: ${error.message ?: "unknown error"}")
                     }
                     finally {
                         if (wakeLock.isHeld) wakeLock.release()
@@ -73,6 +76,11 @@ class CaptureForegroundService : Service() {
         }
     }
     private fun userServiceArgs() = Shizuku.UserServiceArgs(ComponentName(this, CaptureUserService::class.java)).daemon(true).tag("bluetooth-capture").version(1)
+    private fun updateNotification(text: String) {
+        getSystemService(NotificationManager::class.java).notify(ID, NotificationCompat.Builder(this, CHANNEL)
+            .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth).setContentTitle(getString(R.string.capture_active))
+            .setContentText(text).setAutoCancel(true).build())
+    }
     private fun notification() = NotificationCompat.Builder(this, CHANNEL)
         .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
         .setContentTitle(getString(R.string.capture_active))
