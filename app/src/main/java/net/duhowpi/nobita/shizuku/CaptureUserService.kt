@@ -37,6 +37,9 @@ class CaptureUserService : ICaptureUserService.Stub() {
         val path = lines.firstOrNull { it.startsWith("OK:") }?.removePrefix("OK:")?.trim()
             ?: error(lines.lastOrNull { it.startsWith("FAIL:") } ?: "bugreportz did not complete")
         val raw = File.createTempFile("nobita-", ".btsnoop", File("/data/local/tmp"))
+        var extracted = false
+        var converted = false
+        var output: File? = null
         try {
             try {
                 ZipFile(path).use { zip ->
@@ -48,25 +51,54 @@ class CaptureUserService : ICaptureUserService.Stub() {
             } finally {
                 File(path).delete()
             }
-            val directory = File("/sdcard/Download/BluetoothCaptures").apply { mkdirs() }
+            extracted = true
+            val directory = captureDirectory()
             val base = (target.ifBlank { "Bluetooth" }).replace(Regex("[^A-Za-z0-9._-]"), "_").take(48)
             val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-            val output = File(directory, "${base}_$stamp.pcapng")
-            raw.inputStream().use { input -> PcapngWriter(output.outputStream()).use { writer ->
+            val generated = File(directory, "${base}_$stamp.pcapng")
+            output = generated
+            var written = 0
+            raw.inputStream().use { input -> PcapngWriter(generated.outputStream()).use { writer ->
                 val tracker = ConnectionTracker()
                 for (record in BtsnoopReader.read(input)) {
                     val connection = tracker.connectionFor(record)
-                    if (PacketFilter.matches(record, connection, target)) writer.write(record)
+                    if (PacketFilter.matches(record, connection, target)) { writer.write(record); written++ }
                 }
             } }
-            PcapngValidator.validate(output)
+            if (target.isNotBlank() && written == 0) error("No packets matched target; raw capture preserved for full export")
+            PcapngValidator.validate(generated)
             if (saveRaw) raw.copyTo(File(directory, "${base}_$stamp.btsnoop"), overwrite = true)
+            converted = true
             return output.absolutePath
         } finally {
+            if (extracted && !converted) raw.copyTo(File(captureDirectory(), ".pending-${System.currentTimeMillis()}.btsnoop"), overwrite = true)
+            if (!converted) output?.delete()
             raw.delete()
             restoreCaptureEnvironment(previousMode, bluetoothInitiallyEnabled)
         }
     }
+
+    override fun exportFullCapture(previousMode: String, bluetoothInitiallyEnabled: Boolean): String {
+        this.previousMode = previousMode
+        this.bluetoothInitiallyEnabled = bluetoothInitiallyEnabled
+        val directory = captureDirectory()
+        val raw = directory.listFiles { file -> file.name.startsWith(".pending-") && file.name.endsWith(".btsnoop") }
+            ?.maxByOrNull { it.lastModified() } ?: error("No pending raw capture is available")
+        val output = File(directory, "Bluetooth_${System.currentTimeMillis()}.pcapng")
+        try {
+            raw.inputStream().use { input -> PcapngWriter(output.outputStream()).use { writer ->
+                BtsnoopReader.read(input).forEach(writer::write)
+            } }
+            PcapngValidator.validate(output)
+            raw.delete()
+            return output.absolutePath
+        } finally {
+            if (!output.isFile) output.delete()
+            restoreCaptureEnvironment(previousMode, bluetoothInitiallyEnabled)
+        }
+    }
+
+    private fun captureDirectory() = File("/sdcard/Download/BluetoothCaptures").apply { mkdirs() }
 
     override fun restoreCaptureEnvironment(previousMode: String, bluetoothInitiallyEnabled: Boolean) {
         command("setprop", "persist.bluetooth.btsnooplogmode", previousMode)

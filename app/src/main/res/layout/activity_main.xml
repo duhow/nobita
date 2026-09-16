@@ -48,6 +48,7 @@
         android:layout_height="wrap_content"
         android:text="@string/stop_export"
         android:visibility="gone" />
+    <Button android:id="@+id/export_full" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/export_full" android:visibility="gone" />
 
     <TextView
         android:id="@+id/status"

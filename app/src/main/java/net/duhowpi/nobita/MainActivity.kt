@@ -51,6 +51,7 @@ class MainActivity : AppCompatActivity() {
         Shizuku.addBinderDeadListener(binderDead)
         findViewById<Button>(R.id.start_capture).setOnClickListener { startCapture() }
         findViewById<Button>(R.id.stop_export).setOnClickListener { stopAndExport() }
+        findViewById<Button>(R.id.export_full).setOnClickListener { exportFullCapture() }
         findViewById<Button>(R.id.choose_paired).setOnClickListener { choosePairedDevice() }
         findViewById<Button>(R.id.scan_nearby).setOnClickListener { scanNearby() }
         findViewById<Button>(R.id.open_capture).setOnClickListener { openOrShare(false) }
@@ -107,7 +108,17 @@ class MainActivity : AppCompatActivity() {
                     status.text = "PCAPNG exported: $path"; stopService(Intent(this, CaptureForegroundService::class.java)); resetButtons()
                     findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE
                 }
-            } catch (error: Exception) { runOnUiThread { CaptureSession.clear(this); status.text = error.message ?: "Export failed"; stopService(Intent(this, CaptureForegroundService::class.java)); resetButtons() } }
+            } catch (error: Exception) { runOnUiThread { status.text = error.message ?: "Export failed"; findViewById<Button>(R.id.export_full).visibility = android.view.View.VISIBLE; stopService(Intent(this, CaptureForegroundService::class.java)); resetButtons() } }
+        }.start()
+    }
+
+    private fun exportFullCapture() {
+        Thread {
+            try {
+                val session = CaptureSession.load(this) ?: error("No pending capture session")
+                val path = withWakeLock { userService?.exportFullCapture(session.previousMode, session.bluetoothInitiallyEnabled) ?: error("Shizuku UserService is not connected") }
+                runOnUiThread { CaptureSession.clear(this); exportedUri = CaptureFileStore.importPcapng(this, path); status.text = "Full PCAPNG exported"; findViewById<Button>(R.id.export_full).visibility = android.view.View.GONE; findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE; resetButtons() }
+            } catch (error: Exception) { runOnUiThread { status.text = error.message ?: "Full export failed" } }
         }.start()
     }
 

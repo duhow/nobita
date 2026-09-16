@@ -51,9 +51,11 @@ class CaptureForegroundService : Service() {
         try { Shizuku.bindUserService(userServiceArgs(), object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
                 Thread {
+                    var success = false
                     try {
                         val path = ICaptureUserService.Stub.asInterface(binder).exportPcapng(target, false, session.previousMode, session.bluetoothInitiallyEnabled)
                         CaptureFileStore.importPcapng(this@CaptureForegroundService, path)
+                        success = true
                         updateNotification("Capture exported to Downloads/BluetoothCaptures")
                     } catch (error: Exception) {
                         updateNotification("Capture export failed: ${error.message ?: "unknown error"}")
@@ -61,7 +63,7 @@ class CaptureForegroundService : Service() {
                     finally {
                         if (wakeLock.isHeld) wakeLock.release()
                         Shizuku.unbindUserService(userServiceArgs(), this, true)
-                        CaptureSession.clear(this@CaptureForegroundService)
+                        if (success) CaptureSession.clear(this@CaptureForegroundService)
                         stopSelf()
                     }
                 }.start()
