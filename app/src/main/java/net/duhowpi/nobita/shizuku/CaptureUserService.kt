@@ -51,8 +51,11 @@ class CaptureUserService : ICaptureUserService.Stub() {
             completedCaptureId = null
             lastExportSummary = ""
             val mode = command("getprop", "persist.bluetooth.btsnooplogmode").trim().ifEmpty { "unknown" }
+            val directory = captureDirectory()
+            check(directory.isDirectory && directory.canWrite()) { "Capture staging directory is not writable" }
+            check(directory.usableSpace > BtsnoopNetClient.DEFAULT_FREE_SPACE_RESERVE_BYTES) { "Not enough free storage for Bluetooth capture" }
             val id = UUID.randomUUID().toString().replace("-", "")
-            val raw = File(captureDirectory(), ".active-$id.btsnoop.part")
+            val raw = File(directory, ".active-$id.btsnoop.part")
             val newClient = BtsnoopNetClient(raw)
             exportProgress = "Connecting to btsnoop_net…"
             newClient.start()
