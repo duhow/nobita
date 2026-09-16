@@ -15,3 +15,4 @@
 - Stopped changing or restarting Bluetooth during capture setup and cleanup.
 - Added a blue capture-active top bar and packet-count feedback.
 - Fixed failed exports getting stuck on an unavailable full-capture action.
+- Reconciled stale pending sessions when the app reconnects to Shizuku.

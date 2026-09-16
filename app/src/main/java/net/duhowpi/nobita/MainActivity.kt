@@ -56,6 +56,7 @@ class MainActivity : AppCompatActivity() {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             userService = ICaptureUserService.Stub.asInterface(service)
             status.text = "Shizuku connected (uid checked on start)"
+            reconcilePendingSession()
         }
         override fun onServiceDisconnected(name: ComponentName?) { userService = null; status.text = getString(R.string.shizuku_not_ready) }
     }
@@ -248,6 +249,20 @@ class MainActivity : AppCompatActivity() {
             Thread.sleep(250)
         }
         error("Shizuku UserService is not connected")
+    }
+    private fun reconcilePendingSession() {
+        val session = CaptureSession.load(this) ?: return
+        if (session.state() !is CaptureState.ExportPending) return
+        val service = userService ?: return
+        Thread {
+            val pending = runCatching { service.hasPendingCapture() }.getOrDefault(true)
+            if (!pending) runOnUiThread {
+                CaptureSession.clear(this)
+                resetButtons()
+                showCaptureIdle(getString(R.string.capture_packets_pending))
+                status.text = getString(R.string.no_pending_capture)
+            }
+        }.start()
     }
     private fun userServiceArgs() = Shizuku.UserServiceArgs(ComponentName(this, CaptureUserService::class.java))
         .daemon(true).tag("bluetooth-capture").version(USER_SERVICE_VERSION).processNameSuffix("capture")
