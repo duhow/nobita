@@ -32,6 +32,8 @@ class MainActivity : AppCompatActivity() {
     private var userService: ICaptureUserService? = null
     private var exportedFile: File? = null
     private lateinit var status: TextView
+    private val binderReceived = Shizuku.OnBinderReceivedListener { if (!isFinishing) bindUserService() }
+    private val binderDead = Shizuku.OnBinderDeadListener { runOnUiThread { status.text = "Capture degraded: Shizuku stopped. Bluetooth logging may still be active; open Shizuku before exporting." } }
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             userService = ICaptureUserService.Stub.asInterface(service)
@@ -45,6 +47,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         status = findViewById(R.id.status)
         requestNotifications()
+        Shizuku.addBinderReceivedListener(binderReceived)
+        Shizuku.addBinderDeadListener(binderDead)
         findViewById<Button>(R.id.start_capture).setOnClickListener { startCapture() }
         findViewById<Button>(R.id.stop_export).setOnClickListener { stopAndExport() }
         findViewById<Button>(R.id.choose_paired).setOnClickListener { choosePairedDevice() }
@@ -61,6 +65,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        Shizuku.removeBinderReceivedListener(binderReceived)
+        Shizuku.removeBinderDeadListener(binderDead)
         if (userService != null) Shizuku.unbindUserService(userServiceArgs(), connection, false)
         super.onDestroy()
     }
