@@ -32,27 +32,12 @@ class CaptureUserService : ICaptureUserService.Stub() {
 
     override fun prepareCapture(): String {
         check(Process.myUid() == 2000 || Process.myUid() == 0) { "Unexpected UserService UID: ${Process.myUid()}" }
-        previousMode = command("getprop", "persist.bluetooth.btsnooplogmode").trim().ifEmpty { "disabled" }
-        previousDefaultMode = command("settings", "get", "global", "bluetooth_btsnoop_default_mode").trim().ifEmpty { "null" }
-        bluetoothInitiallyEnabled = command("settings", "get", "global", "bluetooth_on").trim() == "1"
-        propertyModeChanged = runCatching {
-            command("setprop", "persist.bluetooth.btsnooplogmode", "full")
-            check(command("getprop", "persist.bluetooth.btsnooplogmode").trim() == "full")
-        }.isSuccess
-        if (!propertyModeChanged) {
-            try {
-                command("settings", "put", "global", "bluetooth_btsnoop_default_mode", "full")
-            } catch (_: IllegalStateException) {
-                error("Bluetooth snoop logging is unavailable: grant Nobita root access in Shizuku or use a device that allows the Bluetooth snoop setting to be changed")
-            }
-            check(command("settings", "get", "global", "bluetooth_btsnoop_default_mode").trim() == "full") {
-                "Bluetooth snoop logging is unavailable: this device rejected both the property and global setting"
-            }
-        }
-        // The stack must be restarted for the new snoop mode to take effect. If Bluetooth
-        // was initially off, restoreCaptureEnvironment turns it off again after export.
-        restartBluetooth()
-        return "uid=${Process.myUid()} mode=full previous=$previousMode defaultMode=$previousDefaultMode propertyChanged=$propertyModeChanged initialBluetooth=$bluetoothInitiallyEnabled"
+        val mode = command("getprop", "persist.bluetooth.btsnooplogmode").trim().ifEmpty { "unknown" }
+        previousMode = mode
+        previousDefaultMode = "null"
+        propertyModeChanged = false
+        bluetoothInitiallyEnabled = true
+        return "uid=${Process.myUid()} mode=$mode previous=$previousMode defaultMode=$previousDefaultMode propertyChanged=$propertyModeChanged initialBluetooth=$bluetoothInitiallyEnabled"
     }
 
     override fun exportPcapng(target: String, saveRaw: Boolean, previousMode: String, previousDefaultMode: String, propertyModeChanged: Boolean, bluetoothInitiallyEnabled: Boolean): String {
@@ -157,27 +142,13 @@ class CaptureUserService : ICaptureUserService.Stub() {
     }
 
     override fun restoreCaptureEnvironment(previousMode: String, previousDefaultMode: String, propertyModeChanged: Boolean, bluetoothInitiallyEnabled: Boolean) {
-        if (propertyModeChanged) command("setprop", "persist.bluetooth.btsnooplogmode", previousMode)
-        if (!propertyModeChanged) {
-            if (previousDefaultMode == "null" || previousDefaultMode.isEmpty()) command("settings", "delete", "global", "bluetooth_btsnoop_default_mode")
-            else command("settings", "put", "global", "bluetooth_btsnoop_default_mode", previousDefaultMode)
-        }
-        if (bluetoothInitiallyEnabled) restartBluetooth() else {
-            command("cmd", "bluetooth_manager", "disable")
-            command("cmd", "bluetooth_manager", "wait-for-state:STATE_OFF")
-        }
+        // Capture assumes the user's Bluetooth snoop configuration is already enabled.
+        // Never restart or otherwise change Bluetooth during cleanup.
     }
 
     override fun abortCapture() {
         val mode = previousMode ?: return
         restoreCaptureEnvironment(mode, previousDefaultMode ?: "null", propertyModeChanged, bluetoothInitiallyEnabled)
-    }
-
-    private fun restartBluetooth() {
-        command("cmd", "bluetooth_manager", "disable")
-        command("cmd", "bluetooth_manager", "wait-for-state:STATE_OFF")
-        command("cmd", "bluetooth_manager", "enable")
-        command("cmd", "bluetooth_manager", "wait-for-state:STATE_ON")
     }
 
     private fun score(name: String): Int = when {

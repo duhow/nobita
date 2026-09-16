@@ -12,3 +12,4 @@
 - Prevented overlapping nearby scans from replacing failure feedback with stale results.
 - Added a foreground notification warning when Shizuku stops during capture.
 - Added first-launch onboarding for Shizuku, Nearby devices, notifications, and optional battery optimization.
+- Stopped changing or restarting Bluetooth during capture setup and cleanup.
