@@ -5,7 +5,9 @@ import net.duhowpi.nobita.btsnoop.BtsnoopFormat
 import net.duhowpi.nobita.btsnoop.BtsnoopNetClient
 import net.duhowpi.nobita.btsnoop.BtsnoopReader
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
@@ -15,6 +17,30 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 class BtsnoopNetTest {
+    @Test fun rejectsAnInvalidNetworkHeaderBeforeCreatingCaptureData() {
+        val output = Files.createTempFile("nobita-invalid", ".btsnoop").toFile()
+        val server = ServerSocket(8872)
+        val serverThread = Thread {
+            server.use {
+                it.accept().use { client ->
+                    val invalid = header().clone().also { bytes -> bytes[0] = 'x'.code.toByte() }
+                    client.getOutputStream().write(invalid)
+                }
+            }
+        }
+        serverThread.start()
+
+        try {
+            BtsnoopNetClient(output, freeSpaceReserveBytes = 0).start()
+            fail("Expected invalid BTSnoop header")
+        } catch (_: IllegalStateException) {
+            assertFalse(output.exists())
+        } finally {
+            serverThread.join(1_000)
+            output.delete()
+        }
+    }
+
     @Test fun copiesAChunkedLiveBtsnoopStream() {
         val output = Files.createTempFile("nobita-net", ".btsnoop").toFile()
         val ready = CountDownLatch(1)
@@ -56,6 +82,26 @@ class BtsnoopNetTest {
         assertEquals(1L, recovery.records)
         assertTrue(recovery.truncatedTail)
         assertEquals(BtsnoopFormat.HEADER_LENGTH + BtsnoopFormat.RECORD_HEADER_LENGTH + 3, output.length())
+        output.delete()
+    }
+
+    @Test fun rejectsOversizedRecordWithoutReadingItsPayload() {
+        val output = Files.createTempFile("nobita-malformed", ".btsnoop").toFile()
+        output.writeBytes(ByteArrayOutputStream().also { bytes ->
+            DataOutputStream(bytes).use { data ->
+                data.write(header())
+                data.writeInt(BtsnoopFormat.MAX_INCLUDED_LENGTH + 1)
+                data.writeInt(BtsnoopFormat.MAX_INCLUDED_LENGTH + 1)
+                data.writeInt(0)
+                data.writeInt(0)
+                data.writeLong(0)
+            }
+        }.toByteArray())
+
+        val recovery = BtsnoopFileRecovery.inspect(output)
+
+        assertTrue(recovery.malformedRecord)
+        assertEquals(0L, recovery.records)
         output.delete()
     }
 
