@@ -18,6 +18,7 @@ import net.duhowpi.nobita.R
 import net.duhowpi.nobita.export.CaptureFileStore
 
 class CaptureForegroundService : Service() {
+    @Volatile private var exportStarted = false
     override fun onCreate() {
         super.onCreate()
         getSystemService(NotificationManager::class.java).createNotificationChannel(
@@ -44,6 +45,10 @@ class CaptureForegroundService : Service() {
         super.onDestroy()
     }
     private fun startExport() {
+        synchronized(this) {
+            if (exportStarted) return
+            exportStarted = true
+        }
         val session = CaptureSession.load(this) ?: run { stopSelf(); return }
         val target = session.target
         if (!Shizuku.pingBinder()) { stopSelf(); return }
