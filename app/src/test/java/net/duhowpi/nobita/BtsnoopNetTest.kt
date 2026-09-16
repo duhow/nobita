@@ -64,7 +64,9 @@ class BtsnoopNetTest {
         val client = BtsnoopNetClient(output, freeSpaceReserveBytes = 0)
         client.start()
         serverThread.join(2_000)
-        client.stop()
+        val firstStop = client.stop()
+        val secondStop = client.stop()
+        assertEquals(firstStop.terminalReason, secondStop.terminalReason)
 
         val records = BtsnoopReader.read(output.inputStream()).toList()
         assertEquals(1, records.size)
