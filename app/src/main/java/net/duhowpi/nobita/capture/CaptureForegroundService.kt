@@ -63,6 +63,7 @@ class CaptureForegroundService : Service() {
                         success = true
                         updateNotification("Capture exported to Downloads/BluetoothCaptures")
                     } catch (error: Exception) {
+                        CaptureSession.load(this@CaptureForegroundService)?.copy(exportPending = true)?.save(this@CaptureForegroundService)
                         updateNotification("Capture export failed: ${error.message ?: "unknown error"}")
                     }
                     finally {

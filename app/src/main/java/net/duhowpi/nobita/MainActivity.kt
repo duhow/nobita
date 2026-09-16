@@ -70,9 +70,10 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.share_capture).setOnClickListener { openOrShare(true) }
         CaptureSession.load(this)?.let { session ->
             findViewById<android.widget.EditText>(R.id.target).setText(session.target)
-            status.text = "Capture active (${elapsed(session.startedAt)})"
+            status.text = if (session.exportPending) "Capture export pending: choose full export" else "Capture active (${elapsed(session.startedAt)})"
             findViewById<Button>(R.id.start_capture).visibility = android.view.View.GONE
-            findViewById<Button>(R.id.stop_export).visibility = android.view.View.VISIBLE
+            findViewById<Button>(R.id.stop_export).visibility = if (session.exportPending) android.view.View.GONE else android.view.View.VISIBLE
+            findViewById<Button>(R.id.export_full).visibility = if (session.exportPending) android.view.View.VISIBLE else android.view.View.GONE
         }
         if (Shizuku.pingBinder()) bindUserService() else status.text = getString(R.string.shizuku_not_ready)
     }
@@ -127,6 +128,7 @@ class MainActivity : AppCompatActivity() {
             } catch (error: Exception) {
                 runOnUiThread {
                     status.text = error.message ?: "Export failed"
+                    CaptureSession.load(this)?.copy(exportPending = true)?.save(this)
                     findViewById<Button>(R.id.export_full).visibility = android.view.View.VISIBLE
                     findViewById<Button>(R.id.start_capture).visibility = android.view.View.GONE
                     findViewById<Button>(R.id.stop_export).visibility = android.view.View.GONE
