@@ -153,10 +153,9 @@ class CaptureUserService : ICaptureUserService.Stub() {
     }
 
     override fun exportFullCapture(captureId: String): String {
-        require(captureId.matches(Regex("[0-9a-f]{32}"))) { "Invalid capture ID" }
         exportProgress = "Converting full capture…"
-        val raw = File(captureDirectory(), ".pending-$captureId.btsnoop")
-        check(raw.isFile) { "No pending raw capture is available for $captureId" }
+        val raw = pendingFile(captureId)
+        check(raw?.isFile == true) { "No pending raw capture is available" }
         val output = File(captureDirectory(), "Bluetooth_${System.currentTimeMillis()}.pcapng")
         try {
             var total = 0
@@ -196,8 +195,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
         }
     }
     override fun hasPendingCapture(captureId: String): Boolean {
-        if (!captureId.matches(Regex("[0-9a-f]{32}"))) return false
-        return File(captureDirectory(), ".pending-$captureId.btsnoop").isFile
+        return pendingFile(captureId)?.isFile == true
     }
 
     override fun abortCapture() {
@@ -264,6 +262,20 @@ class CaptureUserService : ICaptureUserService.Stub() {
                 }
             }
         }
+    }
+
+    private fun pendingFile(captureId: String): File? {
+        val directory = captureDirectory()
+        if (captureId.matches(Regex("[0-9a-f]{32}"))) {
+            return File(directory, ".pending-$captureId.btsnoop")
+        }
+        if (captureId.matches(Regex("[0-9]+"))) {
+            return File(directory, ".pending-$captureId.btsnoop")
+        }
+        if (captureId.isNotEmpty()) return null
+        return directory.listFiles { file ->
+            file.name.matches(Regex("\\.pending-[0-9]+\\.btsnoop"))
+        }?.singleOrNull()
     }
 
     private fun captureStatusJson(state: String, bytes: Long, lastDataAt: Long, reason: String?): String = JSONObject()
