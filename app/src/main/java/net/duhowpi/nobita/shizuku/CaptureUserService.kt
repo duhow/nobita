@@ -137,6 +137,10 @@ class CaptureUserService : ICaptureUserService.Stub() {
 
     override fun getLastExportSummary(): String = lastExportSummary
 
+    override fun hasPendingCapture(): Boolean = captureDirectory()
+        .listFiles { file -> file.name.startsWith(".pending-") && file.name.endsWith(".btsnoop") }
+        ?.isNotEmpty() == true
+
     private fun captureDirectory() = File("/sdcard/Download/BluetoothCaptures").apply { mkdirs() }
     private fun cleanupPendingCaptures() {
         captureDirectory().listFiles { file -> file.name.startsWith(".pending-") && file.name.endsWith(".btsnoop") }

@@ -65,14 +65,20 @@ class CaptureForegroundService : Service() {
             override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
                 Thread {
                     var success = false
+                    var service: ICaptureUserService? = null
                     try {
-                        val service = ICaptureUserService.Stub.asInterface(binder)
-                        val path = service.exportPcapng(target, false, session.previousMode, session.previousDefaultMode, session.propertyModeChanged, session.bluetoothInitiallyEnabled)
+                        val boundService = ICaptureUserService.Stub.asInterface(binder)
+                        service = boundService
+                        val path = boundService.exportPcapng(target, false, session.previousMode, session.previousDefaultMode, session.propertyModeChanged, session.bluetoothInitiallyEnabled)
                         CaptureFileStore.importPcapng(this@CaptureForegroundService, path)
                         success = true
-                        updateNotification("${service.getLastExportSummary()} — exported to Downloads/BluetoothCaptures")
+                        updateNotification("${boundService.getLastExportSummary()} — exported to Downloads/BluetoothCaptures")
                     } catch (error: Exception) {
-                        CaptureSession.load(this@CaptureForegroundService)?.copy(exportPending = true, stage = CaptureStage.EXPORT_PENDING)?.save(this@CaptureForegroundService)
+                        if (runCatching { service?.hasPendingCapture() == true }.getOrDefault(false)) {
+                            CaptureSession.load(this@CaptureForegroundService)?.copy(exportPending = true, stage = CaptureStage.EXPORT_PENDING)?.save(this@CaptureForegroundService)
+                        } else {
+                            CaptureSession.clear(this@CaptureForegroundService)
+                        }
                         updateNotification("Capture export failed: ${error.message ?: "unknown error"}")
                     }
                     finally {
@@ -85,10 +91,12 @@ class CaptureForegroundService : Service() {
             }
             override fun onServiceDisconnected(name: ComponentName?) {
                 if (wakeLock.isHeld) wakeLock.release()
+                CaptureSession.clear(this@CaptureForegroundService)
                 stopSelf()
             }
         }) } catch (error: RuntimeException) {
             if (wakeLock.isHeld) wakeLock.release()
+            CaptureSession.clear(this)
             stopSelf()
         }
     }
@@ -111,5 +119,5 @@ class CaptureForegroundService : Service() {
         val seconds = ((System.currentTimeMillis() - session.startedAt) / 1000).coerceAtLeast(0)
         return "Target: $target • ${seconds / 60}m ${seconds % 60}s"
     }
-    companion object { private const val CHANNEL = "capture"; private const val ID = 42; private const val USER_SERVICE_VERSION = 2; const val ACTION_STOP = "net.duhowpi.nobita.STOP" }
+    companion object { private const val CHANNEL = "capture"; private const val ID = 42; private const val USER_SERVICE_VERSION = 3; const val ACTION_STOP = "net.duhowpi.nobita.STOP" }
 }

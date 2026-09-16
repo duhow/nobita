@@ -151,13 +151,19 @@ class MainActivity : AppCompatActivity() {
                     findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE
                 }
             } catch (error: Exception) {
+                val pending = runCatching { userService?.hasPendingCapture() == true }.getOrDefault(false)
                 runOnUiThread {
-                    showCaptureIdle(getString(R.string.capture_exporting_top))
                     status.text = error.message ?: "Export failed"
-                    CaptureSession.load(this)?.copy(exportPending = true, stage = CaptureStage.EXPORT_PENDING)?.save(this)
-                    findViewById<Button>(R.id.export_full).visibility = android.view.View.VISIBLE
-                    findViewById<Button>(R.id.start_capture).visibility = android.view.View.GONE
-                    findViewById<Button>(R.id.stop_export).visibility = android.view.View.GONE
+                    if (pending) {
+                        showCaptureIdle(getString(R.string.capture_exporting_top))
+                        CaptureSession.load(this)?.copy(exportPending = true, stage = CaptureStage.EXPORT_PENDING)?.save(this)
+                        findViewById<Button>(R.id.export_full).visibility = android.view.View.VISIBLE
+                        findViewById<Button>(R.id.start_capture).visibility = android.view.View.GONE
+                        findViewById<Button>(R.id.stop_export).visibility = android.view.View.GONE
+                    } else {
+                        CaptureSession.clear(this)
+                        resetButtons()
+                    }
                     stopService(Intent(this, CaptureForegroundService::class.java))
                 }
             }
@@ -174,13 +180,23 @@ class MainActivity : AppCompatActivity() {
                 }
                 val uri = CaptureFileStore.importPcapng(this, exported.first)
                 runOnUiThread { CaptureSession.clear(this); exportedUri = uri; showCaptureComplete(exported.second); status.text = "Full capture complete: ${exported.second}"; findViewById<Button>(R.id.export_full).visibility = android.view.View.GONE; findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE; resetButtons() }
-            } catch (error: Exception) { runOnUiThread { status.text = error.message ?: "Full export failed" } }
+            } catch (error: Exception) {
+                val pending = runCatching { userService?.hasPendingCapture() == true }.getOrDefault(false)
+                runOnUiThread {
+                    status.text = error.message ?: "Full export failed"
+                    if (!pending) {
+                        CaptureSession.clear(this)
+                        resetButtons()
+                    }
+                }
+            }
         }.start()
     }
 
     private fun resetButtons() {
         findViewById<Button>(R.id.start_capture).visibility = android.view.View.VISIBLE
         findViewById<Button>(R.id.stop_export).visibility = android.view.View.GONE
+        findViewById<Button>(R.id.export_full).visibility = android.view.View.GONE
     }
     private fun showCaptureActive() {
         captureTopBar.setBackgroundColor(ContextCompat.getColor(this, R.color.capture_active_blue))
@@ -349,5 +365,5 @@ class MainActivity : AppCompatActivity() {
         return try { block() } finally { if (lock.isHeld) lock.release() }
     }
 
-    companion object { private const val SHIZUKU_REQUEST = 100; private const val USER_SERVICE_VERSION = 2 }
+    companion object { private const val SHIZUKU_REQUEST = 100; private const val USER_SERVICE_VERSION = 3 }
 }
