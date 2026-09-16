@@ -1,4 +1,10 @@
 <resources>
     <string name="app_name">Nobita</string>
     <string name="app_description">Bluetooth communication recorder using Shizuku.</string>
+    <string name="capture_target_hint">Target MAC or name (optional)</string>
+    <string name="start_capture">Start capture</string>
+    <string name="stop_export">Stop &amp; export</string>
+    <string name="capture_active">Bluetooth capture active</string>
+    <string name="capture_notification_text">All Bluetooth HCI traffic is being recorded locally.</string>
+    <string name="shizuku_not_ready">Shizuku is not running or not authorized.</string>
 </resources>
