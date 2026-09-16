@@ -19,13 +19,13 @@ class ConnectionTracker {
     private fun parseEvent(packet: ByteArray) {
         if (packet.size < 3) return
         when (packet[1].toInt() and 0xff) {
-            0x03 -> if (packet.size >= 9) {
+            0x03 -> if (packet.size >= 11) {
                 val address = address(packet, 5)
                 connections[readLe16(packet, 3)] = Connection(readLe16(packet, 3), address, names[address])
             }
-            0x07 -> if (packet.size >= 10) {
-                val address = address(packet, 3)
-                names[address] = packet.copyOfRange(9, packet.size).takeWhile { it.toInt() != 0 }.toByteArray().toString(Charsets.UTF_8)
+            0x07 -> if (packet.size >= 11) {
+                val address = address(packet, 4)
+                names[address] = packet.copyOfRange(10, packet.size).takeWhile { it.toInt() != 0 }.toByteArray().toString(Charsets.UTF_8)
             }
             0x05 -> if (packet.size >= 5) connections.remove(readLe16(packet, 2) and 0x0fff)
             0x3e -> if (packet.size >= 4 && ((packet[3].toInt() and 0xff == 0x01) || (packet[3].toInt() and 0xff == 0x0a))) {
