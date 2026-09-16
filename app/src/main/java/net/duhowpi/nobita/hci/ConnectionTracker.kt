@@ -15,6 +15,7 @@ data class Connection(
 class ConnectionTracker {
     private val connections = mutableMapOf<Int, Connection>()
     private val seenHandles = mutableSetOf<Int>()
+    private val pendingClassicAddresses = mutableSetOf<String>()
     private val names = mutableMapOf<String, String>()
     fun connectionFor(record: BtsnoopRecord): Connection? {
         val packet = record.packet
@@ -48,9 +49,11 @@ class ConnectionTracker {
             0x03 -> if (packet.size >= 12) {
                 val address = address(packet, 6)
                 val handle = readLe16(packet, 4)
+                pendingClassicAddresses.remove(address)
                 seenHandles += handle
                 connections[handle] = Connection(handle, address, names[address], Transport.CLASSIC)
             }
+            0x04 -> if (packet.size >= 13) pendingClassicAddresses += address(packet, 3)
             0x07 -> if (packet.size >= 11) {
                 val address = address(packet, 4)
                 rememberName(address, packet.copyOfRange(10, packet.size).takeWhile { it.toInt() != 0 }.toByteArray().toString(Charsets.UTF_8))
@@ -100,6 +103,7 @@ class ConnectionTracker {
         connections.values.filter { it.address == address }.forEach { it.name = name }
     }
     fun connectionCount(): Int = seenHandles.size
+    fun pendingClassicAddresses(): Set<String> = pendingClassicAddresses.toSet()
     private fun address(packet: ByteArray, offset: Int) = (0..5).joinToString(":") { "%02X".format(packet[offset + 5 - it].toInt() and 0xff) }
     private fun readLe16(packet: ByteArray, offset: Int) = (packet[offset].toInt() and 0xff) or ((packet[offset + 1].toInt() and 0xff) shl 8)
 }

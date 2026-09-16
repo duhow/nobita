@@ -6,6 +6,7 @@ import net.duhowpi.nobita.hci.Transport
 import net.duhowpi.nobita.hci.PacketFilter
 import net.duhowpi.nobita.hci.DeviceTarget
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -83,6 +84,23 @@ class ConnectionTrackerTest {
         val connection = tracker.connectionFor(BtsnoopRecord(3, 0, 2, byteArrayOf(0x02, 0x42, 0x00)))
         assertEquals("Headset", connection?.name)
         assertTrue(DeviceTarget.fromQuery("head").matches(connection))
+    }
+
+    @Test fun tracksClassicConnectionRequestsUntilComplete() {
+        val tracker = ConnectionTracker()
+        val request = byteArrayOf(
+            0x04, 0x04, 0x0a,
+            0xa6.toByte(), 0xb5.toByte(), 0xc4.toByte(), 0xd3.toByte(), 0xe2.toByte(), 0xf1.toByte(),
+            0, 0, 0, 1,
+        )
+        tracker.connectionFor(BtsnoopRecord(0, 1, 0, request))
+        assertTrue(tracker.pendingClassicAddresses().contains("F1:E2:D3:C4:B5:A6"))
+
+        tracker.connectionFor(BtsnoopRecord(0, 1, 1, byteArrayOf(
+            0x04, 0x03, 0x0b, 0, 0x42, 0,
+            0xa6.toByte(), 0xb5.toByte(), 0xc4.toByte(), 0xd3.toByte(), 0xe2.toByte(), 0xf1.toByte(), 0, 0,
+        )))
+        assertFalse(tracker.pendingClassicAddresses().contains("F1:E2:D3:C4:B5:A6"))
     }
 
     @Test fun learnsNameFromExtendedAdvertisingReport() {
