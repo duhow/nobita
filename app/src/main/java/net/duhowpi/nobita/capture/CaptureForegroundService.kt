@@ -60,6 +60,7 @@ class CaptureForegroundService : Service() {
             if (exportStarted) return
             exportStarted = true
         }
+        notificationHandler.removeCallbacks(notificationUpdater)
         val session = CaptureSession.load(this) ?: run { stopSelf(); return }
         session.copy(stage = CaptureStage.EXPORTING).save(this)
         val target = session.target
