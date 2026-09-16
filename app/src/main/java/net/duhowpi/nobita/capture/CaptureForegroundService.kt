@@ -83,7 +83,8 @@ class CaptureForegroundService : Service() {
             stopSelf()
         }
     }
-    private fun userServiceArgs() = Shizuku.UserServiceArgs(ComponentName(this, CaptureUserService::class.java)).daemon(true).tag("bluetooth-capture").version(1)
+    private fun userServiceArgs() = Shizuku.UserServiceArgs(ComponentName(this, CaptureUserService::class.java))
+        .daemon(true).tag("bluetooth-capture").version(1).processNameSuffix("capture")
     private fun updateNotification(text: String) {
         getSystemService(NotificationManager::class.java).notify(ID, NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth).setContentTitle(getString(R.string.capture_active))
