@@ -17,6 +17,8 @@
     <string name="shizuku_not_ready">Shizuku is not running or not authorized.</string>
     <string name="open_capture">Open</string>
     <string name="share_capture">Share</string>
+    <string name="settings_title">Settings</string>
+    <string name="capture_saved_file">PCAPNG saved: %1$s</string>
     <string name="choose_paired">Choose paired device</string>
     <string name="no_paired_devices">No paired Bluetooth devices found.</string>
     <string name="scan_nearby">Scan nearby devices</string>

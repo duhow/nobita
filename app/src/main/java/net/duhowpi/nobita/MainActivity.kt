@@ -13,6 +13,7 @@ import org.json.JSONObject
 import android.widget.Button
 import android.widget.TextView
 import android.widget.LinearLayout
+import android.widget.ImageButton
 import android.net.Uri
 import android.os.PowerManager
 import android.util.TypedValue
@@ -39,6 +40,7 @@ import net.duhowpi.nobita.shizuku.ICaptureUserService
 import net.duhowpi.nobita.export.CaptureFileStore
 import net.duhowpi.nobita.export.CaptureDirectory
 import java.util.concurrent.atomic.AtomicBoolean
+import java.io.File
 
 class MainActivity : AppCompatActivity() {
     @Volatile private var userService: ICaptureUserService? = null
@@ -136,10 +138,11 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.stop_export).setOnClickListener { stopAndExport() }
         findViewById<Button>(R.id.export_full).setOnClickListener { exportFullCapture() }
         findViewById<Button>(R.id.choose_paired).setOnClickListener { choosePairedDevice() }
-        findViewById<Button>(R.id.scan_nearby).setOnClickListener { scanNearby() }
+        findViewById<ImageButton>(R.id.scan_nearby).setOnClickListener { scanNearby() }
         findViewById<Button>(R.id.choose_recent).setOnClickListener { chooseRecentTarget() }
-        findViewById<Button>(R.id.open_capture).setOnClickListener { openOrShare(false) }
-        findViewById<Button>(R.id.share_capture).setOnClickListener { openOrShare(true) }
+        findViewById<ImageButton>(R.id.open_capture).setOnClickListener { openOrShare(false) }
+        findViewById<ImageButton>(R.id.share_capture).setOnClickListener { openOrShare(true) }
+        findViewById<ImageButton>(R.id.settings).setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
         CaptureSession.load(this)?.let { session ->
             findViewById<android.widget.EditText>(R.id.target).setText(session.target)
             val pending = session.exportPending || session.state() is CaptureState.ExportPending
@@ -180,7 +183,7 @@ class MainActivity : AppCompatActivity() {
             Shizuku.requestPermission(SHIZUKU_REQUEST); return
         }
         val target = findViewById<android.widget.EditText>(R.id.target).text.toString()
-        val saveRaw = findViewById<android.widget.CheckBox>(R.id.save_raw).isChecked
+        val saveRaw = getSharedPreferences(SettingsActivity.PREFERENCES, MODE_PRIVATE).getBoolean(SettingsActivity.SAVE_RAW, false)
         Thread {
             var startedCaptureId: String? = null
             try {
@@ -210,8 +213,6 @@ class MainActivity : AppCompatActivity() {
     private fun stopAndExport() {
         val currentSession = CaptureSession.load(this)
         if (currentSession == null || currentSession.stage != CaptureStage.CAPTURING) return
-        val target = findViewById<android.widget.EditText>(R.id.target).text.toString()
-        val saveRaw = findViewById<android.widget.CheckBox>(R.id.save_raw).isChecked
         findViewById<Button>(R.id.stop_export).isEnabled = false
         currentSession.copy(stage = CaptureStage.EXPORTING).save(this)
         showCaptureIdle(getString(R.string.capture_exporting_top))
@@ -241,7 +242,7 @@ class MainActivity : AppCompatActivity() {
                 runOnUiThread {
                     CaptureSession.clear(this); exportedUri = uri
                     showCaptureComplete(exported.second)
-                    status.text = "Capture complete: ${exported.second}\nPCAPNG saved: ${exported.first}"; stopService(Intent(this, CaptureForegroundService::class.java)); resetButtons()
+                    status.text = "Capture complete: ${exported.second}\n${getString(R.string.capture_saved_file, File(exported.first).name)}"; stopService(Intent(this, CaptureForegroundService::class.java)); resetButtons()
                     findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE
                 }
             } catch (error: Exception) {
@@ -288,7 +289,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 val uri = CaptureFileStore.importPcapng(this, exported.first)
-                runOnUiThread { CaptureSession.clear(this); exportedUri = uri; showCaptureComplete(exported.second); status.text = "Full capture complete: ${exported.second}"; findViewById<Button>(R.id.export_full).visibility = android.view.View.GONE; findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE; resetButtons() }
+                runOnUiThread { CaptureSession.clear(this); exportedUri = uri; showCaptureComplete(exported.second); status.text = "Full capture complete: ${exported.second}\n${getString(R.string.capture_saved_file, File(exported.first).name)}"; findViewById<Button>(R.id.export_full).visibility = android.view.View.GONE; findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE; resetButtons() }
             } catch (error: Exception) {
                 val pending = runCatching { userService?.hasPendingCapture(CaptureSession.load(this)?.captureId.orEmpty()) == true }.getOrDefault(false)
                 runOnUiThread {
@@ -495,7 +496,7 @@ class MainActivity : AppCompatActivity() {
         }
         val generation = ++scanGeneration
         val scanStatus = findViewById<TextView>(R.id.scan_status)
-        val scanButton = findViewById<Button>(R.id.scan_nearby)
+        val scanButton = findViewById<ImageButton>(R.id.scan_nearby)
         val scanIndicator = findViewById<android.widget.ImageView>(R.id.scan_indicator)
         scanStatus.text = getString(R.string.scan_in_progress)
         scanButton.isEnabled = false
@@ -531,14 +532,14 @@ class MainActivity : AppCompatActivity() {
         }, 8_000)
     }
     private fun showScanComplete(count: Int) {
-        findViewById<Button>(R.id.scan_nearby).isEnabled = true
+        findViewById<ImageButton>(R.id.scan_nearby).isEnabled = true
         val indicator = findViewById<android.widget.ImageView>(R.id.scan_indicator)
         indicator.clearAnimation()
         indicator.visibility = android.view.View.GONE
         findViewById<TextView>(R.id.scan_status).text = resources.getQuantityString(R.plurals.nearby_devices_found, count, count)
     }
     private fun showScanFailed(errorCode: Int) {
-        findViewById<Button>(R.id.scan_nearby).isEnabled = true
+        findViewById<ImageButton>(R.id.scan_nearby).isEnabled = true
         val indicator = findViewById<android.widget.ImageView>(R.id.scan_indicator)
         indicator.clearAnimation()
         indicator.visibility = android.view.View.GONE

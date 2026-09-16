@@ -36,6 +36,10 @@
             android:launchMode="singleTop">
         </activity>
 
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false" />
+
         <provider
             android:name="rikka.shizuku.ShizukuProvider"
             android:authorities="${applicationId}.shizuku"
