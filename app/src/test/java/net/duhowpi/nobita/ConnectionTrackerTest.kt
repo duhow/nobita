@@ -2,6 +2,7 @@ package net.duhowpi.nobita
 
 import net.duhowpi.nobita.btsnoop.BtsnoopRecord
 import net.duhowpi.nobita.hci.ConnectionTracker
+import net.duhowpi.nobita.hci.Transport
 import net.duhowpi.nobita.hci.PacketFilter
 import net.duhowpi.nobita.hci.DeviceTarget
 import org.junit.Assert.assertEquals
@@ -20,6 +21,7 @@ class ConnectionTrackerTest {
         tracker.connectionFor(event)
         val connection = tracker.connectionFor(BtsnoopRecord(3, 0, 1, byteArrayOf(0x02, 0x42, 0x00)))
         assertEquals("F1:E2:D3:C4:B5:A6", connection?.address)
+        assertEquals(Transport.LE, connection?.transport)
         assertTrue(PacketFilter.matches(event, connection, "F1:E2"))
         assertTrue(DeviceTarget.fromQuery("F1:E2:D3:C4:B5:A6").matches(connection))
         assertEquals("F1:E2:D3:C4:B5:A6", tracker.connectionFor(event)?.address)
@@ -42,6 +44,7 @@ class ConnectionTrackerTest {
         )))
         val connection = tracker.connectionFor(BtsnoopRecord(3, 0, 2, byteArrayOf(0x02, 0x2a, 0x00)))
         assertEquals("Headset", connection?.name)
+        assertEquals(Transport.CLASSIC, connection?.transport)
     }
 
     @Test fun learnsNamesFromEachAdvertisingReport() {

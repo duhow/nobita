@@ -2,7 +2,15 @@ package net.duhowpi.nobita.hci
 
 import net.duhowpi.nobita.btsnoop.BtsnoopRecord
 
-data class Connection(val handle: Int, val address: String, var name: String? = null, var connected: Boolean = true)
+enum class Transport { CLASSIC, LE, UNKNOWN }
+
+data class Connection(
+    val handle: Int,
+    val address: String,
+    var name: String? = null,
+    val transport: Transport = Transport.UNKNOWN,
+    var connected: Boolean = true,
+)
 
 class ConnectionTracker {
     private val connections = mutableMapOf<Int, Connection>()
@@ -41,7 +49,7 @@ class ConnectionTracker {
                 val address = address(packet, 6)
                 val handle = readLe16(packet, 4)
                 seenHandles += handle
-                connections[handle] = Connection(handle, address, names[address])
+                connections[handle] = Connection(handle, address, names[address], Transport.CLASSIC)
             }
             0x07 -> if (packet.size >= 11) {
                 val address = address(packet, 4)
@@ -54,7 +62,7 @@ class ConnectionTracker {
                     if (packet.size >= addressOffset + 6) {
                         val address = address(packet, addressOffset)
                         seenHandles += handle
-                        connections[handle] = Connection(handle, address, names[address])
+                        connections[handle] = Connection(handle, address, names[address], Transport.LE)
                     }
                 }
                 0x02 -> parseAdvertising(packet, extended = false)
