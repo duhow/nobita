@@ -36,7 +36,9 @@ class CaptureUserService : ICaptureUserService.Stub() {
     @Volatile private var exportProgress = "Ready"
 
     init {
-        recoverInterruptedParts()
+        // Recovery must not prevent Shizuku from connecting. The shell process
+        // may not be able to inspect app-specific external storage on every ROM.
+        runCatching { recoverInterruptedParts() }
     }
 
     @Keep
