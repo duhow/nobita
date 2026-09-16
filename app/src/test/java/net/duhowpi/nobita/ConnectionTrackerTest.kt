@@ -60,4 +60,40 @@ class ConnectionTrackerTest {
         val connection = tracker.connectionFor(BtsnoopRecord(3, 0, 2, byteArrayOf(0x02, 0x42, 0x00)))
         assertEquals("B2", connection?.name)
     }
+
+    @Test fun updatesConnectedDeviceWhenRemoteNameArrives() {
+        val tracker = ConnectionTracker()
+        tracker.connectionFor(BtsnoopRecord(0, 1, 0, byteArrayOf(
+            0x04, 0x03, 0x0b, 0, 0x42, 0,
+            0xa6.toByte(), 0xb5.toByte(), 0xc4.toByte(), 0xd3.toByte(), 0xe2.toByte(), 0xf1.toByte(), 0, 0,
+        )))
+        tracker.connectionFor(BtsnoopRecord(0, 1, 1, byteArrayOf(
+            0x04, 0x07, 14, 0,
+            0xa6.toByte(), 0xb5.toByte(), 0xc4.toByte(), 0xd3.toByte(), 0xe2.toByte(), 0xf1.toByte(),
+            *"Headset".toByteArray(), 0,
+        )))
+
+        val connection = tracker.connectionFor(BtsnoopRecord(3, 0, 2, byteArrayOf(0x02, 0x42, 0x00)))
+        assertEquals("Headset", connection?.name)
+        assertTrue(DeviceTarget.fromQuery("head").matches(connection))
+    }
+
+    @Test fun learnsNameFromExtendedAdvertisingReport() {
+        val tracker = ConnectionTracker()
+        val report = byteArrayOf(
+            0, 0, 0, 6, 5, 4, 3, 2, 1,
+            1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            4, 3, 9, 'E'.code.toByte(), 'X'.code.toByte(),
+        )
+        tracker.connectionFor(BtsnoopRecord(0, 0, 0, byteArrayOf(
+            0x04, 0x3e, 0, 0x0d, 1, *report,
+        )))
+
+        tracker.connectionFor(BtsnoopRecord(0, 1, 1, byteArrayOf(
+            0x04, 0x3e, 0x13, 0x01, 0, 0x42, 0, 0, 0,
+            6, 5, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0,
+        )))
+        val connection = tracker.connectionFor(BtsnoopRecord(3, 0, 2, byteArrayOf(0x02, 0x42, 0x00)))
+        assertEquals("EX", connection?.name)
+    }
 }
