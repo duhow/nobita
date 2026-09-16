@@ -38,4 +38,25 @@ class ConnectionTrackerTest {
         val connection = tracker.connectionFor(BtsnoopRecord(3, 0, 2, byteArrayOf(0x02, 0x2a, 0x00)))
         assertEquals("Headset", connection?.name)
     }
+
+    @Test fun learnsNamesFromEachAdvertisingReport() {
+        val tracker = ConnectionTracker()
+        val reportOne = byteArrayOf(
+            0, 0, 6, 5, 4, 3, 2, 1, 4, 3, 9, 'A'.code.toByte(), '1'.code.toByte(), 0xc0.toByte(),
+        )
+        val reportTwo = byteArrayOf(
+            0, 0, 0x16, 0x15, 0x14, 0x13, 0x12, 0x11, 4, 3, 9, 'B'.code.toByte(), '2'.code.toByte(), 0xc0.toByte(),
+        )
+        tracker.connectionFor(BtsnoopRecord(0, 0, 0, byteArrayOf(
+            0x04, 0x3e, 0x1d, 0x02, 0x02, *reportOne, *reportTwo,
+        )))
+        tracker.connectionFor(BtsnoopRecord(0, 1, 1, byteArrayOf(
+            0x04, 0x3e, 0x13, 0x01, 0x42, 0x00, 0x00, 0x01,
+            0x16, 0x15, 0x14, 0x13, 0x12, 0x11,
+            0, 0, 0, 0, 0, 0, 0, 0,
+        )))
+
+        val connection = tracker.connectionFor(BtsnoopRecord(3, 0, 2, byteArrayOf(0x02, 0x42, 0x00)))
+        assertEquals("B2", connection?.name)
+    }
 }

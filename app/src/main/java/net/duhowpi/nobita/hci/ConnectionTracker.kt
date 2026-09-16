@@ -39,17 +39,25 @@ class ConnectionTracker {
         }
     }
     private fun parseAdvertising(packet: ByteArray) {
-        if (packet.size < 15) return
-        val address = address(packet, 7)
-        val dataLength = packet[13].toInt() and 0xff
-        val end = (14 + dataLength).coerceAtMost(packet.size)
-        var offset = 14
-        while (offset + 1 < end) {
-            val length = packet[offset].toInt() and 0xff
-            if (length == 0 || offset + 1 + length > end) break
-            val type = packet[offset + 1].toInt() and 0xff
-            if (type == 0x08 || type == 0x09) names[address] = packet.copyOfRange(offset + 2, offset + 1 + length).toString(Charsets.UTF_8)
-            offset += length + 1
+        if (packet.size < 5) return
+        val reportCount = packet[4].toInt() and 0xff
+        var reportOffset = 5
+        repeat(reportCount) {
+            if (reportOffset + 9 > packet.size) return@repeat
+            val address = address(packet, reportOffset + 2)
+            val dataLength = packet[reportOffset + 8].toInt() and 0xff
+            val dataStart = reportOffset + 9
+            val dataEnd = dataStart + dataLength
+            if (dataEnd + 1 > packet.size) return@repeat
+            var offset = dataStart
+            while (offset + 1 < dataEnd) {
+                val length = packet[offset].toInt() and 0xff
+                if (length == 0 || offset + 1 + length > dataEnd) break
+                val type = packet[offset + 1].toInt() and 0xff
+                if (type == 0x08 || type == 0x09) names[address] = packet.copyOfRange(offset + 2, offset + 1 + length).toString(Charsets.UTF_8)
+                offset += length + 1
+            }
+            reportOffset = dataEnd + 1 // Skip RSSI.
         }
     }
     private fun address(packet: ByteArray, offset: Int) = (0..5).joinToString(":") { "%02X".format(packet[offset + 5 - it].toInt() and 0xff) }
