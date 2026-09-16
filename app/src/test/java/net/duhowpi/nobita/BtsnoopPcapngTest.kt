@@ -9,6 +9,7 @@ import org.junit.Test
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
 import java.nio.file.Files
+import java.util.zip.DeflaterOutputStream
 
 class BtsnoopPcapngTest {
     @Test fun readsAndroidBtsnoopAndPreservesDirection() {
@@ -26,6 +27,23 @@ class BtsnoopPcapngTest {
         file.delete()
     }
 
+    @Test fun decodesCompressedBtsnoozV1() {
+        val compressed = ByteArrayOutputStream()
+        DeflaterOutputStream(compressed).use { output ->
+            output.write(byteArrayOf(2, 0, 10, 0, 0, 0, 0x10, 0x0e))
+        }
+        val snooz = ByteArrayOutputStream().apply {
+            write(1)
+            writeLongLe(1_000)
+            write(compressed.toByteArray())
+        }
+        val output = ByteArrayOutputStream()
+        net.duhowpi.nobita.btsnoop.BtsnoozDecoder.decode(snooz.toByteArray().inputStream(), output)
+        val record = BtsnoopReader.read(output.toByteArray().inputStream()).single()
+        assertEquals(listOf<Byte>(0x04, 0x0e), record.packet.toList())
+        assertEquals(true, record.controllerToHost)
+    }
+
     private fun btsnoop(packet: ByteArray, flags: Int): ByteArray {
         val bytes = ByteArrayOutputStream()
         DataOutputStream(bytes).use { output ->
@@ -37,5 +55,9 @@ class BtsnoopPcapngTest {
             output.write(packet)
         }
         return bytes.toByteArray()
+    }
+
+    private fun ByteArrayOutputStream.writeLongLe(value: Long) {
+        repeat(8) { write((value ushr (it * 8)).toInt()) }
     }
 }

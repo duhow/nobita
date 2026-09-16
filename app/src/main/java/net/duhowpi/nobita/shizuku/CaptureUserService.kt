@@ -10,6 +10,7 @@ import java.util.Date
 import java.util.Locale
 import androidx.annotation.Keep
 import net.duhowpi.nobita.btsnoop.BtsnoopReader
+import net.duhowpi.nobita.btsnoop.BtsnoozDecoder
 import net.duhowpi.nobita.hci.ConnectionTracker
 import net.duhowpi.nobita.hci.PacketFilter
 import net.duhowpi.nobita.pcapng.PcapngWriter
@@ -54,7 +55,10 @@ class CaptureUserService : ICaptureUserService.Stub() {
                 val entry = zip.entries().asSequence().filter { !it.isDirectory }
                     .map { it to score(it.name) }.filter { it.second > 0 }
                     .maxByOrNull { it.second }?.first ?: error("No BTSnoop file found")
-                zip.getInputStream(entry).use { input -> rawFile.outputStream().use { input.copyTo(it) } }
+                    zip.getInputStream(entry).use { input -> rawFile.outputStream().use { output ->
+                        if (entry.name.substringAfterLast('/').startsWith("btsnooz_hci.log", true)) BtsnoozDecoder.decode(input, output)
+                        else input.copyTo(output)
+                    } }
             }
             extracted = true
             val directory = captureDirectory()
