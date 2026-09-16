@@ -49,6 +49,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
         var raw: File? = null
         var extracted = false
         var converted = false
+        var captureType = "Unknown"
         var output: File? = null
         try {
             val lines = commandLines("/system/bin/bugreportz", "-p")
@@ -61,8 +62,9 @@ class CaptureUserService : ICaptureUserService.Stub() {
                 val entry = zip.entries().asSequence().filter { !it.isDirectory }
                     .map { it to score(it.name) }.filter { it.second > 0 }
                     .maxByOrNull { it.second }?.first ?: error("No BTSnoop file found")
-                    zip.getInputStream(entry).use { input -> rawFile.outputStream().use { output ->
-                        if (entry.name.substringAfterLast('/').startsWith("btsnooz_hci.log", true)) BtsnoozDecoder.decode(input, output)
+                captureType = if (entry.name.substringAfterLast('/').startsWith("btsnooz_hci.log", true)) "BTSNOOZ fallback" else "Full BTSNOOP"
+                zip.getInputStream(entry).use { input -> rawFile.outputStream().use { output ->
+                    if (entry.name.substringAfterLast('/').startsWith("btsnooz_hci.log", true)) BtsnoozDecoder.decode(input, output)
                         else input.copyTo(output)
                     } }
             }
@@ -86,7 +88,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
                     if (PacketFilter.matches(record, connection, target)) { writer.write(record); written++ }
                 }
             } }
-            lastExportSummary = "Packets: $total; target packets: $written; connections: ${handles.size}; ATT packets: $attPackets"
+            lastExportSummary = "Capture: $captureType; target: ${target.ifBlank { "All devices" }}; packets: $total; target packets: $written; connections: ${handles.size}; ATT packets: $attPackets"
             if (target.isNotBlank() && written == 0) error("No packets matched target; raw capture preserved for full export")
             PcapngValidator.validate(generated)
             if (saveRaw) rawFile.copyTo(File(directory, "${base}_$stamp.btsnoop"), overwrite = true)
