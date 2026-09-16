@@ -18,6 +18,7 @@ import androidx.core.app.NotificationCompat
 import net.duhowpi.nobita.MainActivity
 import net.duhowpi.nobita.R
 import net.duhowpi.nobita.export.CaptureFileStore
+import net.duhowpi.nobita.export.CaptureDirectory
 import java.util.concurrent.atomic.AtomicBoolean
 
 class CaptureForegroundService : Service() {
@@ -78,6 +79,7 @@ class CaptureForegroundService : Service() {
                     try {
                         val boundService = ICaptureUserService.Stub.asInterface(binder)
                         service = boundService
+                        boundService.setCaptureDirectory(CaptureDirectory.path(this@CaptureForegroundService) ?: error("Capture folder is not configured"))
                         val exportCompleted = AtomicBoolean(false)
                         val progress = Thread {
                             while (!exportCompleted.get()) {
@@ -142,5 +144,5 @@ class CaptureForegroundService : Service() {
         val seconds = ((System.currentTimeMillis() - session.startedAt) / 1000).coerceAtLeast(0)
         return "Target: $target • ${seconds / 60}m ${seconds % 60}s"
     }
-    companion object { private const val CHANNEL = "capture"; private const val ID = 42; private const val USER_SERVICE_VERSION = 9; const val ACTION_STOP = "net.duhowpi.nobita.STOP"; const val ACTION_EXPORTING = "net.duhowpi.nobita.EXPORTING" }
+    companion object { private const val CHANNEL = "capture"; private const val ID = 42; private const val USER_SERVICE_VERSION = 10; const val ACTION_STOP = "net.duhowpi.nobita.STOP"; const val ACTION_EXPORTING = "net.duhowpi.nobita.EXPORTING" }
 }

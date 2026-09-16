@@ -30,11 +30,12 @@
     <string name="choose_recent">Choose recent target</string>
     <string name="no_recent_targets">No recent targets.</string>
     <string name="onboarding_title">Set up Nobita</string>
-    <string name="onboarding_description">Grant the required access before capturing Bluetooth traffic. Enable Bluetooth HCI snoop logging and its socket in Developer options first. Nobita uses the local btsnoop_net endpoint; unsupported firmware cannot capture. Notifications and battery exemption are optional but recommended. Exports are published to Downloads/BluetoothCaptures; no storage permission is required.</string>
+    <string name="onboarding_description">Grant the required access before capturing Bluetooth traffic. Enable Bluetooth HCI snoop logging and its socket in Developer options first. Nobita uses the local btsnoop_net endpoint; unsupported firmware cannot capture. Choose a folder where temporary and final capture files will be stored. Notifications and battery exemption are optional but recommended.</string>
     <string name="onboarding_shizuku_title">Shizuku</string>
     <string name="onboarding_bluetooth_title">Nearby devices</string>
     <string name="onboarding_notifications_title">Notifications</string>
     <string name="onboarding_battery_title">Battery optimization</string>
+    <string name="onboarding_folder_title">Capture folder</string>
     <string name="onboarding_required">Required</string>
     <string name="onboarding_optional">Optional</string>
     <string name="onboarding_available">Available</string>
@@ -42,5 +43,8 @@
     <string name="onboarding_shizuku_missing">Install and start Shizuku first</string>
     <string name="onboarding_allow">Allow access</string>
     <string name="onboarding_open_settings">Open settings</string>
+    <string name="onboarding_choose_folder">Choose folder</string>
+    <string name="onboarding_folder_unsupported">Choose a folder on primary shared storage.</string>
+    <string name="onboarding_folder_error">Unable to save access to that folder.</string>
     <string name="onboarding_next">Continue to Nobita</string>
 </resources>

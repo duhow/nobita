@@ -17,6 +17,7 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import rikka.shizuku.Shizuku
+import net.duhowpi.nobita.export.CaptureDirectory
 
 class OnboardingActivity : AppCompatActivity() {
     private lateinit var next: Button
@@ -28,6 +29,9 @@ class OnboardingActivity : AppCompatActivity() {
     private lateinit var bluetoothCheck: ImageView
     private lateinit var notificationCheck: ImageView
     private lateinit var batteryCheck: ImageView
+    private lateinit var folderStatus: TextView
+    private lateinit var folderCheck: ImageView
+    private lateinit var folderAction: Button
     private lateinit var shizukuAction: Button
     private lateinit var bluetoothAction: Button
     private lateinit var notificationAction: Button
@@ -50,6 +54,9 @@ class OnboardingActivity : AppCompatActivity() {
         bluetoothStatus = findViewById(R.id.onboarding_bluetooth_status)
         notificationStatus = findViewById(R.id.onboarding_notification_status)
         batteryStatus = findViewById(R.id.onboarding_battery_status)
+        folderStatus = findViewById(R.id.onboarding_folder_status)
+        folderCheck = findViewById(R.id.onboarding_folder_check)
+        folderAction = findViewById(R.id.onboarding_folder)
         shizukuCheck = findViewById(R.id.onboarding_shizuku_check)
         bluetoothCheck = findViewById(R.id.onboarding_bluetooth_check)
         notificationCheck = findViewById(R.id.onboarding_notification_check)
@@ -62,6 +69,7 @@ class OnboardingActivity : AppCompatActivity() {
         bluetoothAction.setOnClickListener { requestBluetooth() }
         notificationAction.setOnClickListener { requestNotifications() }
         batteryAction.setOnClickListener { openBatterySettings() }
+        folderAction.setOnClickListener { chooseCaptureFolder() }
         next.setOnClickListener { getPreferences(MODE_PRIVATE).edit().putBoolean(ONBOARDING_COMPLETE, true).apply(); openMain() }
         Shizuku.addBinderReceivedListener(shizukuBinderListener)
         Shizuku.addBinderDeadListener(shizukuDeadListener)
@@ -79,6 +87,24 @@ class OnboardingActivity : AppCompatActivity() {
         refresh()
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != FOLDER_REQUEST || resultCode != Activity.RESULT_OK) return
+        val uri = data?.data ?: return
+        val path = runCatching { CaptureDirectory.resolveTreeUri(uri) }.getOrNull()
+        if (path == null) {
+            folderStatus.text = getString(R.string.onboarding_folder_unsupported)
+            return
+        }
+        try {
+            contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            CaptureDirectory.save(this, uri, path)
+            refresh()
+        } catch (_: SecurityException) {
+            folderStatus.text = getString(R.string.onboarding_folder_error)
+        }
+    }
+
     override fun onDestroy() {
         Shizuku.removeBinderReceivedListener(shizukuBinderListener)
         Shizuku.removeBinderDeadListener(shizukuDeadListener)
@@ -91,11 +117,13 @@ class OnboardingActivity : AppCompatActivity() {
         val bluetoothReady = bluetoothPermissionsGranted()
         val notificationsReady = notificationPermissionGranted()
         val batteryReady = batteryExempt()
+        val folderReady = CaptureDirectory.isConfigured(this)
         setPermissionState(shizukuStatus, shizukuCheck, shizukuAction, shizukuReady, required = true)
         setPermissionState(bluetoothStatus, bluetoothCheck, bluetoothAction, bluetoothReady, required = true)
         setPermissionState(notificationStatus, notificationCheck, notificationAction, notificationsReady, required = false)
         setPermissionState(batteryStatus, batteryCheck, batteryAction, batteryReady, required = false)
-        next.isEnabled = shizukuReady && bluetoothReady
+        setPermissionState(folderStatus, folderCheck, folderAction, folderReady, required = true)
+        next.isEnabled = shizukuReady && bluetoothReady && folderReady
     }
 
     private fun setPermissionState(status: TextView, check: ImageView, action: Button, granted: Boolean, required: Boolean) {
@@ -138,8 +166,14 @@ class OnboardingActivity : AppCompatActivity() {
         }
     }
 
+    private fun chooseCaptureFolder() {
+        startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+        }, FOLDER_REQUEST)
+    }
+
     private fun requiredAccessAvailable() = Shizuku.pingBinder() &&
-        Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED && bluetoothPermissionsGranted()
+        Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED && bluetoothPermissionsGranted() && CaptureDirectory.isConfigured(this)
 
     private fun bluetoothPermissionsGranted() = Build.VERSION.SDK_INT < 31 ||
         BLUETOOTH_PERMISSIONS.all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
@@ -160,6 +194,7 @@ class OnboardingActivity : AppCompatActivity() {
         private const val SHIZUKU_REQUEST = 100
         private const val BLUETOOTH_REQUEST = 101
         private const val NOTIFICATION_REQUEST = 102
+        private const val FOLDER_REQUEST = 103
         private const val SHIZUKU_PACKAGE = "moe.shizuku.privileged.api"
         private val BLUETOOTH_PERMISSIONS = arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
     }

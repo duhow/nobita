@@ -1,7 +1,6 @@
 package net.duhowpi.nobita.shizuku
 
 import android.os.Process
-import android.os.Environment
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File
@@ -26,6 +25,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
     private var client: BtsnoopNetClient? = null
     private var captureId: String? = null
     private var captureStartedAt = 0L
+    private var captureDirectoryPath: String? = null
     private var activeRaw: File? = null
     private var target = ""
     private var saveRaw = false
@@ -45,6 +45,16 @@ class CaptureUserService : ICaptureUserService.Stub() {
     fun destroy() {
         abortActiveCapture()
         System.exit(0)
+    }
+
+    override fun setCaptureDirectory(path: String) {
+        val directory = File(path).canonicalFile
+        check(directory.isDirectory && directory.canWrite()) { "Capture folder is not writable" }
+        synchronized(lifecycleLock) {
+            check(client == null && !exportRunning) { "Cannot change capture folder during capture" }
+            captureDirectoryPath = directory.path
+            runCatching { recoverInterruptedParts() }
+        }
     }
 
     override fun startCapture(target: String, saveRaw: Boolean): String {
@@ -264,10 +274,10 @@ class CaptureUserService : ICaptureUserService.Stub() {
         }
     }
 
-    private fun captureDirectory() = File(
-        Environment.getExternalStorageDirectory(),
-        "Android/data/${net.duhowpi.nobita.BuildConfig.APPLICATION_ID}/files/BluetoothCaptures",
-    ).apply { mkdirs() }
+    private fun captureDirectory(): File {
+        val path = captureDirectoryPath ?: error("Capture folder is not configured")
+        return File(path)
+    }
 
     private fun recoverInterruptedParts() {
         captureDirectory().listFiles { file ->

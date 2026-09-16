@@ -38,6 +38,7 @@ import net.duhowpi.nobita.capture.TargetHistory
 import net.duhowpi.nobita.shizuku.CaptureUserService
 import net.duhowpi.nobita.shizuku.ICaptureUserService
 import net.duhowpi.nobita.export.CaptureFileStore
+import net.duhowpi.nobita.export.CaptureDirectory
 import java.util.concurrent.atomic.AtomicBoolean
 
 class MainActivity : AppCompatActivity() {
@@ -107,8 +108,9 @@ class MainActivity : AppCompatActivity() {
                             startCaptureStatusPolling()
                         }
                     }
-                }
+            }
             }.start()
+            runCatching { CaptureDirectory.path(this@MainActivity)?.let { userService?.setCaptureDirectory(it) } }
             reconcilePendingSession()
         }
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -399,7 +401,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
     private fun requireUserService(): ICaptureUserService {
-        userService?.let { return it }
+        userService?.let {
+            it.setCaptureDirectory(CaptureDirectory.path(this@MainActivity) ?: error("Capture folder is not configured"))
+            return it
+        }
         check(Shizuku.pingBinder()) { "Shizuku is not running" }
         bindUserService()
         val deadline = System.nanoTime() + 15_000_000_000L
@@ -410,7 +415,10 @@ class MainActivity : AppCompatActivity() {
                 val remainingMillis = (remainingNanos / 1_000_000L).coerceAtLeast(1L)
                 userServiceLock.wait(remainingMillis)
             }
-            userService?.let { return it }
+            userService?.let {
+                it.setCaptureDirectory(CaptureDirectory.path(this@MainActivity) ?: error("Capture folder is not configured"))
+                return it
+            }
         }
         error("Shizuku UserService is not connected")
     }
@@ -563,5 +571,5 @@ class MainActivity : AppCompatActivity() {
         it.getString("captureId")
     }
 
-    companion object { private const val SHIZUKU_REQUEST = 100; private const val USER_SERVICE_VERSION = 9 }
+    companion object { private const val SHIZUKU_REQUEST = 100; private const val USER_SERVICE_VERSION = 10 }
 }

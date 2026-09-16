@@ -46,3 +46,4 @@
 - Scoped startup-abort cleanup to the capture session that actually started.
 - Improved recovery when connecting to the Shizuku capture service.
 - Prevented storage recovery errors from blocking the Shizuku UserService connection.
+- Added user-selected capture storage for temporary and final files.

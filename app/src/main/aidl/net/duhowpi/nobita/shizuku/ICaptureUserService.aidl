@@ -1,6 +1,7 @@
 package net.duhowpi.nobita.shizuku;
 
 interface ICaptureUserService {
+    void setCaptureDirectory(String path);
     String startCapture(String target, boolean saveRaw);
     String stopAndExport(String captureId);
     String exportFullCapture(String captureId);
