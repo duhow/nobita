@@ -118,11 +118,14 @@ class MainActivity : AppCompatActivity() {
         Thread {
             try {
                 val session = CaptureSession.load(this) ?: error("No active capture session")
-                val path = withWakeLock { requireUserService().exportPcapng(target, saveRaw, session.previousMode, session.bluetoothInitiallyEnabled) }
-                val uri = CaptureFileStore.importPcapng(this, path)
+                val exported = withWakeLock {
+                    val service = requireUserService()
+                    service.exportPcapng(target, saveRaw, session.previousMode, session.bluetoothInitiallyEnabled) to service.getLastExportSummary()
+                }
+                val uri = CaptureFileStore.importPcapng(this, exported.first)
                 runOnUiThread {
                     CaptureSession.clear(this); exportedUri = uri
-                    status.text = "PCAPNG exported: $path"; stopService(Intent(this, CaptureForegroundService::class.java)); resetButtons()
+                    status.text = "Capture complete: ${exported.second}\nPCAPNG exported: ${exported.first}"; stopService(Intent(this, CaptureForegroundService::class.java)); resetButtons()
                     findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE
                 }
             } catch (error: Exception) {
@@ -142,9 +145,12 @@ class MainActivity : AppCompatActivity() {
         Thread {
             try {
                 val session = CaptureSession.load(this) ?: error("No pending capture session")
-                val path = withWakeLock { requireUserService().exportFullCapture(session.previousMode, session.bluetoothInitiallyEnabled) }
-                val uri = CaptureFileStore.importPcapng(this, path)
-                runOnUiThread { CaptureSession.clear(this); exportedUri = uri; status.text = "Full PCAPNG exported"; findViewById<Button>(R.id.export_full).visibility = android.view.View.GONE; findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE; resetButtons() }
+                val exported = withWakeLock {
+                    val service = requireUserService()
+                    service.exportFullCapture(session.previousMode, session.bluetoothInitiallyEnabled) to service.getLastExportSummary()
+                }
+                val uri = CaptureFileStore.importPcapng(this, exported.first)
+                runOnUiThread { CaptureSession.clear(this); exportedUri = uri; status.text = "Full capture complete: ${exported.second}"; findViewById<Button>(R.id.export_full).visibility = android.view.View.GONE; findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE; resetButtons() }
             } catch (error: Exception) { runOnUiThread { status.text = error.message ?: "Full export failed" } }
         }.start()
     }

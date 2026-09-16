@@ -58,10 +58,11 @@ class CaptureForegroundService : Service() {
                 Thread {
                     var success = false
                     try {
-                        val path = ICaptureUserService.Stub.asInterface(binder).exportPcapng(target, false, session.previousMode, session.bluetoothInitiallyEnabled)
+                        val service = ICaptureUserService.Stub.asInterface(binder)
+                        val path = service.exportPcapng(target, false, session.previousMode, session.bluetoothInitiallyEnabled)
                         CaptureFileStore.importPcapng(this@CaptureForegroundService, path)
                         success = true
-                        updateNotification("Capture exported to Downloads/BluetoothCaptures")
+                        updateNotification("${service.getLastExportSummary()} — exported to Downloads/BluetoothCaptures")
                     } catch (error: Exception) {
                         CaptureSession.load(this@CaptureForegroundService)?.copy(exportPending = true)?.save(this@CaptureForegroundService)
                         updateNotification("Capture export failed: ${error.message ?: "unknown error"}")

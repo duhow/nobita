@@ -20,6 +20,7 @@ import net.duhowpi.nobita.pcapng.PcapngValidator
 class CaptureUserService : ICaptureUserService.Stub() {
     private var previousMode: String? = null
     private var bluetoothInitiallyEnabled = false
+    private var lastExportSummary = ""
 
     @Keep
     fun destroy() {
@@ -69,13 +70,18 @@ class CaptureUserService : ICaptureUserService.Stub() {
             val generated = File(directory, "${base}_$stamp.pcapng")
             output = generated
             var written = 0
+            var total = 0
+            val handles = mutableSetOf<Int>()
             rawFile.inputStream().use { input -> PcapngWriter(generated.outputStream()).use { writer ->
                 val tracker = ConnectionTracker()
                 for (record in BtsnoopReader.read(input)) {
                     val connection = tracker.connectionFor(record)
+                    total++
+                    connection?.let { handles += it.handle }
                     if (PacketFilter.matches(record, connection, target)) { writer.write(record); written++ }
                 }
             } }
+            lastExportSummary = "Packets: $total; target packets: $written; connections: ${handles.size}"
             if (target.isNotBlank() && written == 0) error("No packets matched target; raw capture preserved for full export")
             PcapngValidator.validate(generated)
             if (saveRaw) rawFile.copyTo(File(directory, "${base}_$stamp.btsnoop"), overwrite = true)
@@ -99,9 +105,11 @@ class CaptureUserService : ICaptureUserService.Stub() {
             ?.maxByOrNull { it.lastModified() } ?: error("No pending raw capture is available")
         val output = File(directory, "Bluetooth_${System.currentTimeMillis()}.pcapng")
         try {
+            var total = 0
             raw.inputStream().use { input -> PcapngWriter(output.outputStream()).use { writer ->
-                BtsnoopReader.read(input).forEach(writer::write)
+                BtsnoopReader.read(input).forEach { record -> writer.write(record); total++ }
             } }
+            lastExportSummary = "Packets: $total; target packets: $total; connections: all"
             PcapngValidator.validate(output)
             raw.delete()
             return output.absolutePath
@@ -110,6 +118,8 @@ class CaptureUserService : ICaptureUserService.Stub() {
             restoreCaptureEnvironment(previousMode, bluetoothInitiallyEnabled)
         }
     }
+
+    override fun getLastExportSummary(): String = lastExportSummary
 
     private fun captureDirectory() = File("/sdcard/Download/BluetoothCaptures").apply { mkdirs() }
     private fun cleanupPendingCaptures() {
