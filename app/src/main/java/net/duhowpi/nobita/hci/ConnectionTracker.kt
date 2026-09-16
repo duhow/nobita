@@ -46,7 +46,7 @@ class ConnectionTracker {
     private fun parseEvent(packet: ByteArray) {
         if (packet.size < 3) return
         when (packet[1].toInt() and 0xff) {
-            0x03 -> if (packet.size >= 12) {
+            0x03 -> if (packet.size >= 12 && packet[3].toInt() and 0xff == 0) {
                 val address = address(packet, 6)
                 val handle = readLe16(packet, 4) and 0x0fff
                 pendingClassicAddresses.remove(address)
@@ -59,7 +59,7 @@ class ConnectionTracker {
                 rememberName(address, packet.copyOfRange(10, packet.size).takeWhile { it.toInt() != 0 }.toByteArray().toString(Charsets.UTF_8))
             }
             0x3e -> if (packet.size >= 4) when (packet[3].toInt() and 0xff) {
-                0x01, 0x0a -> if (packet.size >= 15) {
+                0x01, 0x0a -> if (packet.size >= 15 && packet[4].toInt() and 0xff == 0) {
                     val handle = readLe16(packet, 5)
                     val addressOffset = 9
                     if (packet.size >= addressOffset + 6) {
