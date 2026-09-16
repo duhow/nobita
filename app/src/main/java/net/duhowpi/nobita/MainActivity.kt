@@ -15,6 +15,9 @@ import java.io.File
 import android.os.PowerManager
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanResult
 import android.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -45,6 +48,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.start_capture).setOnClickListener { startCapture() }
         findViewById<Button>(R.id.stop_export).setOnClickListener { stopAndExport() }
         findViewById<Button>(R.id.choose_paired).setOnClickListener { choosePairedDevice() }
+        findViewById<Button>(R.id.scan_nearby).setOnClickListener { scanNearby() }
         findViewById<Button>(R.id.open_capture).setOnClickListener { openOrShare(false) }
         findViewById<Button>(R.id.share_capture).setOnClickListener { openOrShare(true) }
         CaptureSession.load(this)?.let { session ->
@@ -128,6 +132,33 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this).setTitle(R.string.choose_paired).setItems(labels) { _, which ->
             findViewById<android.widget.EditText>(R.id.target).setText(devices[which].address)
         }.show()
+    }
+    private fun scanNearby() {
+        if (Build.VERSION.SDK_INT >= 31 && checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT), 22)
+            return
+        }
+        if (Build.VERSION.SDK_INT < 31 && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 23)
+            return
+        }
+        val scanner = BluetoothAdapter.getDefaultAdapter()?.bluetoothLeScanner ?: run { status.text = getString(R.string.no_nearby_devices); return }
+        val found = linkedMapOf<String, BluetoothDevice>()
+        val callback = object : ScanCallback() {
+            override fun onScanResult(type: Int, result: ScanResult) { found[result.device.address] = result.device }
+            override fun onScanFailed(errorCode: Int) { runOnUiThread { status.text = "Bluetooth scan failed: $errorCode" } }
+        }
+        status.text = "Scanning nearby devices..."
+        scanner.startScan(callback)
+        android.os.Handler(mainLooper).postDelayed({
+            scanner.stopScan(callback)
+            val devices = found.values.sortedBy { it.name ?: it.address }
+            runOnUiThread {
+                if (devices.isEmpty()) { status.text = getString(R.string.no_nearby_devices); return@runOnUiThread }
+                AlertDialog.Builder(this).setTitle(R.string.scan_nearby)
+                    .setItems(devices.map { "${it.name ?: "Unknown device"}\n${it.address}" }.toTypedArray()) { _, which -> findViewById<android.widget.EditText>(R.id.target).setText(devices[which].address) }.show()
+            }
+        }, 8_000)
     }
     private fun elapsed(startedAt: Long): String = "${((System.currentTimeMillis() - startedAt) / 1000)}s"
     private fun <T> withWakeLock(block: () -> T): T {

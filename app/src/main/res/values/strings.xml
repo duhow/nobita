@@ -11,4 +11,6 @@
     <string name="share_capture">Share</string>
     <string name="choose_paired">Choose paired device</string>
     <string name="no_paired_devices">No paired Bluetooth devices found.</string>
+    <string name="scan_nearby">Scan nearby devices</string>
+    <string name="no_nearby_devices">No nearby Bluetooth devices found.</string>
 </resources>
