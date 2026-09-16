@@ -50,3 +50,4 @@
 - Clarified that final capture files stay in the selected folder.
 - Made completed-capture actions reachable by scrolling the main screen.
 - Removed the redundant battery optimization button from the main screen.
+- Updated the launcher icon to use an adaptive dark background without a white wrapper circle.
