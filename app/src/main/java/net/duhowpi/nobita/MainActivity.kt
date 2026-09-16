@@ -185,7 +185,7 @@ class MainActivity : AppCompatActivity() {
                     }
                     progress.start()
                     try {
-                    service.stopAndExport() to service.getLastExportSummary()
+                    service.stopAndExport(session.captureId) to service.getLastExportSummary()
                     } finally {
                         finished.set(true)
                         progress.interrupt()
@@ -479,5 +479,5 @@ class MainActivity : AppCompatActivity() {
 
     private fun captureId(result: String): String = result.substringAfter("captureId=", "").substringBefore(' ')
 
-    companion object { private const val SHIZUKU_REQUEST = 100; private const val USER_SERVICE_VERSION = 6 }
+    companion object { private const val SHIZUKU_REQUEST = 100; private const val USER_SERVICE_VERSION = 7 }
 }

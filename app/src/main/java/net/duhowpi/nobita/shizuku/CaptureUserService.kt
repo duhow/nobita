@@ -29,6 +29,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
     private var saveRaw = false
     private var exportRunning = false
     private var completedExport: String? = null
+    private var completedCaptureId: String? = null
     private var lastExportSummary = ""
     @Volatile private var exportProgress = "Ready"
 
@@ -47,6 +48,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
         synchronized(lifecycleLock) {
             check(client == null && !exportRunning) { "A Bluetooth capture is already active" }
             completedExport = null
+            completedCaptureId = null
             lastExportSummary = ""
             val mode = command("getprop", "persist.bluetooth.btsnooplogmode").trim().ifEmpty { "unknown" }
             val id = UUID.randomUUID().toString().replace("-", "")
@@ -63,7 +65,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
         }
     }
 
-    override fun stopAndExport(): String {
+    override fun stopAndExport(requestedCaptureId: String): String {
         val captureTarget: String
         val captureSaveRaw: Boolean
         val raw: File
@@ -71,7 +73,8 @@ class CaptureUserService : ICaptureUserService.Stub() {
         val terminalReason: String?
         synchronized(lifecycleLock) {
             while (exportRunning) lifecycleLock.wait()
-            completedExport?.let { return it }
+            completedExport?.takeIf { completedCaptureId == requestedCaptureId }?.let { return it }
+            check(captureId == requestedCaptureId) { "Capture ID does not match the active session" }
             exportRunning = true
             val activeClient = client ?: run {
                 exportRunning = false
@@ -105,7 +108,10 @@ class CaptureUserService : ICaptureUserService.Stub() {
             return result
         } finally {
             synchronized(lifecycleLock) {
-                if (result != null) completedExport = result
+                if (result != null) {
+                    completedExport = result
+                    completedCaptureId = id
+                }
                 exportRunning = false
                 lifecycleLock.notifyAll()
             }

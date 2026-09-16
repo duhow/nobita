@@ -34,3 +34,4 @@
 - Recovered complete records from interrupted active stream files after service recreation.
 - Reconciled interrupted captures after the app or UserService is recreated.
 - Preserved one-time conversion for legacy timestamp-named pending captures.
+- Made stop and export operations safe against stale or duplicate capture actions.
