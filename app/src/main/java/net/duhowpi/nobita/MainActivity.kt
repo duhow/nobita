@@ -337,15 +337,27 @@ class MainActivity : AppCompatActivity() {
     }
     private fun reconcilePendingSession() {
         val session = CaptureSession.load(this) ?: return
-        if (session.state() !is CaptureState.ExportPending) return
         val service = userService ?: return
         Thread {
+            val authoritative = runCatching { service.getCaptureStatus() }.getOrNull()?.let(::parseCaptureStatus)
             val pending = runCatching { service.hasPendingCapture(session.captureId) }.getOrDefault(true)
-            if (!pending) runOnUiThread {
-                CaptureSession.clear(this)
-                resetButtons()
-                showCaptureIdle(getString(R.string.capture_packets_pending))
-                status.text = getString(R.string.no_pending_capture)
+            when {
+                session.stage == CaptureStage.CAPTURING && authoritative?.state == "CAPTURING" -> startCaptureStatusPolling()
+                session.stage == CaptureStage.CAPTURING && authoritative?.state in setOf("IDLE", "COMPLETED") && pending -> runOnUiThread {
+                    CaptureSession.clear(this)
+                    session.copy(exportPending = true, stage = CaptureStage.EXPORT_PENDING).save(this)
+                    showCaptureIdle(getString(R.string.capture_exporting_top))
+                    status.text = "Capture interrupted; full capture is available"
+                    findViewById<Button>(R.id.start_capture).visibility = android.view.View.GONE
+                    findViewById<Button>(R.id.stop_export).visibility = android.view.View.GONE
+                    findViewById<Button>(R.id.export_full).visibility = android.view.View.VISIBLE
+                }
+                session.state() is CaptureState.ExportPending && !pending -> runOnUiThread {
+                    CaptureSession.clear(this)
+                    resetButtons()
+                    showCaptureIdle(getString(R.string.capture_packets_pending))
+                    status.text = getString(R.string.no_pending_capture)
+                }
             }
         }.start()
     }
