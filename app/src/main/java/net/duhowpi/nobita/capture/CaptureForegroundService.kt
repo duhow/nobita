@@ -20,6 +20,9 @@ import net.duhowpi.nobita.R
 import net.duhowpi.nobita.export.CaptureFileStore
 
 class CaptureForegroundService : Service() {
+    private val binderDead = Shizuku.OnBinderDeadListener {
+        updateNotification(getString(R.string.capture_degraded))
+    }
     @Volatile private var exportStarted = false
     private val notificationHandler = Handler(Looper.getMainLooper())
     private val notificationUpdater = object : Runnable {
@@ -34,6 +37,7 @@ class CaptureForegroundService : Service() {
             NotificationChannel(CHANNEL, "Bluetooth capture", NotificationManager.IMPORTANCE_LOW)
         )
         startForeground(ID, notification())
+        Shizuku.addBinderDeadListener(binderDead)
         notificationHandler.postDelayed(notificationUpdater, 1_000)
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -43,6 +47,7 @@ class CaptureForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
     override fun onDestroy() {
         notificationHandler.removeCallbacks(notificationUpdater)
+        Shizuku.removeBinderDeadListener(binderDead)
         val session = CaptureSession.load(this)
         if (session != null && Shizuku.pingBinder()) {
             try { Shizuku.bindUserService(userServiceArgs(), object : ServiceConnection {
@@ -102,7 +107,7 @@ class CaptureForegroundService : Service() {
     private fun updateNotification(text: String) {
         getSystemService(NotificationManager::class.java).notify(ID, NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth).setContentTitle(getString(R.string.capture_active))
-            .setContentText(text).setAutoCancel(true).build())
+            .setContentText(text).setOngoing(true).setContentIntent(PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)).build())
     }
     private fun notification() = NotificationCompat.Builder(this, CHANNEL)
         .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
