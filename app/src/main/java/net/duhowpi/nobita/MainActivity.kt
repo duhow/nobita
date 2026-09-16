@@ -42,6 +42,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class MainActivity : AppCompatActivity() {
     @Volatile private var userService: ICaptureUserService? = null
+    private val userServiceLock = Object()
+    @Volatile private var userServiceBinding = false
     private var exportedUri: Uri? = null
     private var activeScan: Pair<BluetoothLeScanner, ScanCallback>? = null
     private var scanGeneration = 0
@@ -76,7 +78,11 @@ class MainActivity : AppCompatActivity() {
     }
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            userService = ICaptureUserService.Stub.asInterface(service)
+            synchronized(userServiceLock) {
+                userService = ICaptureUserService.Stub.asInterface(service)
+                userServiceBinding = false
+                userServiceLock.notifyAll()
+            }
             status.text = "Shizuku connected (uid checked on start)"
             Thread {
                 val captureStatus = runCatching { userService?.getCaptureStatus() }.getOrNull()?.let(::parseCaptureStatus)
@@ -105,7 +111,14 @@ class MainActivity : AppCompatActivity() {
             }.start()
             reconcilePendingSession()
         }
-        override fun onServiceDisconnected(name: ComponentName?) { userService = null; status.text = getString(R.string.shizuku_not_ready) }
+        override fun onServiceDisconnected(name: ComponentName?) {
+            synchronized(userServiceLock) {
+                userService = null
+                userServiceBinding = false
+                userServiceLock.notifyAll()
+            }
+            status.text = getString(R.string.shizuku_not_ready)
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -157,7 +170,7 @@ class MainActivity : AppCompatActivity() {
         Shizuku.removeBinderReceivedListener(binderReceived)
         Shizuku.removeBinderDeadListener(binderDead)
         Shizuku.removeRequestPermissionResultListener(permissionResult)
-        if (userService != null) Shizuku.unbindUserService(userServiceArgs(), connection, false)
+        if (userService != null || userServiceBinding) Shizuku.unbindUserService(userServiceArgs(), connection, false)
         super.onDestroy()
     }
 
@@ -370,10 +383,18 @@ class MainActivity : AppCompatActivity() {
             status.text = "Shizuku authorization is required before connecting"
             return
         }
+        synchronized(userServiceLock) {
+            if (userService != null || userServiceBinding) return
+            userServiceBinding = true
+        }
         try {
             Shizuku.bindUserService(userServiceArgs(), connection)
         } catch (error: SecurityException) {
-            userService = null
+            synchronized(userServiceLock) {
+                userService = null
+                userServiceBinding = false
+                userServiceLock.notifyAll()
+            }
             status.text = "Shizuku authorization is required before connecting"
         }
     }
@@ -381,9 +402,15 @@ class MainActivity : AppCompatActivity() {
         userService?.let { return it }
         check(Shizuku.pingBinder()) { "Shizuku is not running" }
         bindUserService()
-        repeat(20) {
+        val deadline = System.nanoTime() + 15_000_000_000L
+        synchronized(userServiceLock) {
+            while (userService == null) {
+                val remainingNanos = deadline - System.nanoTime()
+                if (remainingNanos <= 0) break
+                val remainingMillis = (remainingNanos / 1_000_000L).coerceAtLeast(1L)
+                userServiceLock.wait(remainingMillis)
+            }
             userService?.let { return it }
-            Thread.sleep(250)
         }
         error("Shizuku UserService is not connected")
     }

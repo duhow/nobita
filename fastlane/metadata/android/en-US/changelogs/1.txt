@@ -44,3 +44,4 @@
 - Aligned capture staging with Android’s resolved external-storage path.
 - Rebuilt the active capture screen from authoritative UserService state after process recreation.
 - Scoped startup-abort cleanup to the capture session that actually started.
+- Improved recovery when connecting to the Shizuku capture service.
