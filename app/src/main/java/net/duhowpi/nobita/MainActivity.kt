@@ -169,11 +169,14 @@ class MainActivity : AppCompatActivity() {
         val target = findViewById<android.widget.EditText>(R.id.target).text.toString()
         val saveRaw = findViewById<android.widget.CheckBox>(R.id.save_raw).isChecked
         Thread {
+            var startedCaptureId: String? = null
             try {
                 val result = withWakeLock { requireUserService().startCapture(target, saveRaw) }
+                val captureSessionId = captureId(result)
+                startedCaptureId = captureSessionId
                 runOnUiThread {
                     TargetHistory.add(this, target)
-                    CaptureSession(System.currentTimeMillis(), target, captureId(result), saveRaw = saveRaw).save(this)
+                    CaptureSession(System.currentTimeMillis(), target, captureSessionId, saveRaw = saveRaw).save(this)
                     status.text = getString(R.string.capture_active)
                     showCaptureActive()
                     ContextCompat.startForegroundService(this, Intent(this, CaptureForegroundService::class.java))
@@ -185,7 +188,7 @@ class MainActivity : AppCompatActivity() {
                     startCaptureStatusPolling()
                 }
             } catch (error: Exception) {
-                runCatching { userService?.abortCapture() }
+                startedCaptureId?.let { captureId -> runCatching { userService?.abortCapture(captureId) } }
                 runOnUiThread { CaptureSession.clear(this); status.text = error.message ?: "Capture preparation failed" }
             }
         }.start()
@@ -533,5 +536,5 @@ class MainActivity : AppCompatActivity() {
         it.getString("captureId")
     }
 
-    companion object { private const val SHIZUKU_REQUEST = 100; private const val USER_SERVICE_VERSION = 8 }
+    companion object { private const val SHIZUKU_REQUEST = 100; private const val USER_SERVICE_VERSION = 9 }
 }

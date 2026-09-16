@@ -41,7 +41,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
 
     @Keep
     fun destroy() {
-        abortCapture()
+        abortActiveCapture()
         System.exit(0)
     }
 
@@ -218,18 +218,22 @@ class CaptureUserService : ICaptureUserService.Stub() {
         return pendingFile(captureId)?.isFile == true
     }
 
-    override fun abortCapture() {
+    override fun abortCapture(requestedCaptureId: String) {
         synchronized(lifecycleLock) {
-            client?.stop()
-            preserveActiveCapture()
-            client = null
-            activeRaw = null
-            captureId = null
-            captureStartedAt = 0L
-            target = ""
-            saveRaw = false
-            lifecycleLock.notifyAll()
+            if (captureId == requestedCaptureId) abortActiveCapture()
         }
+    }
+
+    private fun abortActiveCapture() {
+        client?.stop()
+        preserveActiveCapture()
+        client = null
+        activeRaw = null
+        captureId = null
+        captureStartedAt = 0L
+        target = ""
+        saveRaw = false
+        lifecycleLock.notifyAll()
     }
 
     private fun preserveActiveCapture() {

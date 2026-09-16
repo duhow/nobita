@@ -8,5 +8,5 @@ interface ICaptureUserService {
     String getExportProgress();
     String getCaptureStatus();
     boolean hasPendingCapture(String captureId);
-    void abortCapture();
+    void abortCapture(String captureId);
 }
