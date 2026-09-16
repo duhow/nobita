@@ -37,6 +37,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var status: TextView
     private val binderReceived = Shizuku.OnBinderReceivedListener { if (!isFinishing) bindUserService() }
     private val binderDead = Shizuku.OnBinderDeadListener { runOnUiThread { status.text = "Capture degraded: Shizuku stopped. Bluetooth logging may still be active; open Shizuku before exporting." } }
+    private val permissionResult = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
+        if (requestCode == SHIZUKU_REQUEST && grantResult == PackageManager.PERMISSION_GRANTED) {
+            runOnUiThread { status.text = "Shizuku authorized; ready to capture" }
+            bindUserService()
+        }
+    }
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             userService = ICaptureUserService.Stub.asInterface(service)
@@ -52,6 +58,7 @@ class MainActivity : AppCompatActivity() {
         requestNotifications()
         Shizuku.addBinderReceivedListener(binderReceived)
         Shizuku.addBinderDeadListener(binderDead)
+        Shizuku.addRequestPermissionResultListener(permissionResult)
         findViewById<Button>(R.id.start_capture).setOnClickListener { startCapture() }
         findViewById<Button>(R.id.stop_export).setOnClickListener { stopAndExport() }
         findViewById<Button>(R.id.export_full).setOnClickListener { exportFullCapture() }
@@ -73,6 +80,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         Shizuku.removeBinderReceivedListener(binderReceived)
         Shizuku.removeBinderDeadListener(binderDead)
+        Shizuku.removeRequestPermissionResultListener(permissionResult)
         if (userService != null) Shizuku.unbindUserService(userServiceArgs(), connection, false)
         super.onDestroy()
     }
