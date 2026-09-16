@@ -47,3 +47,5 @@
 - Improved recovery when connecting to the Shizuku capture service.
 - Prevented storage recovery errors from blocking the Shizuku UserService connection.
 - Added user-selected capture storage for temporary and final files.
+- Fixed finalization when the selected capture folder is already in use.
+- Clarified that final capture files stay in the selected folder.

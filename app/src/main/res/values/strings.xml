@@ -1,13 +1,13 @@
 <resources>
     <string name="app_name">Nobita</string>
-    <string name="app_description">Bluetooth HCI capture reads all traffic from this phone’s local btsnoop_net endpoint (127.0.0.1:8872). The selected-device filter is applied only when exporting.</string>
+    <string name="app_description">Bluetooth HCI capture reads all traffic from this phone’s local btsnoop_net endpoint (127.0.0.1:8872). The selected-device filter is applied only when finalizing.</string>
     <string name="capture_target_hint">Target MAC or name (optional)</string>
     <string name="start_capture">Start capture</string>
-    <string name="stop_export">Stop &amp; export</string>
+    <string name="stop_export">Stop &amp; finalize</string>
     <string name="capture_active">Bluetooth capture active</string>
-    <string name="capture_packets_pending">Packets processed: available after export</string>
+    <string name="capture_packets_pending">Packets processed: available after finalization</string>
     <string name="capture_packets_count">Packets processed: %1$d</string>
-    <string name="capture_exporting_top">Exporting capture…</string>
+    <string name="capture_exporting_top">Finalizing capture…</string>
     <string name="capture_complete_top">Capture complete</string>
     <string name="capture_notification_text">All Bluetooth HCI traffic is being recorded locally.</string>
     <string name="capture_degraded">Capture stopped: Shizuku stopped the live Bluetooth stream. Complete packets may be recoverable.</string>
@@ -24,7 +24,7 @@
     <string name="scan_failed">Nearby scan failed (%1$d).</string>
     <string name="no_nearby_devices">No nearby Bluetooth devices found.</string>
     <string name="save_raw">Save raw BTSnoop too</string>
-    <string name="export_full">Export full capture</string>
+    <string name="export_full">Finalize full capture</string>
     <string name="no_pending_capture">No pending raw capture; ready for a new capture.</string>
     <string name="battery_settings">Battery optimization settings</string>
     <string name="choose_recent">Choose recent target</string>

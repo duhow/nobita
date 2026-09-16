@@ -243,13 +243,13 @@ class MainActivity : AppCompatActivity() {
                 runOnUiThread {
                     CaptureSession.clear(this); exportedUri = uri
                     showCaptureComplete(exported.second)
-                    status.text = "Capture complete: ${exported.second}\nPCAPNG exported: ${exported.first}"; stopService(Intent(this, CaptureForegroundService::class.java)); resetButtons()
+                    status.text = "Capture complete: ${exported.second}\nPCAPNG saved: ${exported.first}"; stopService(Intent(this, CaptureForegroundService::class.java)); resetButtons()
                     findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE
                 }
             } catch (error: Exception) {
                 val pending = runCatching { userService?.hasPendingCapture(CaptureSession.load(this)?.captureId.orEmpty()) == true }.getOrDefault(false)
                 runOnUiThread {
-                    status.text = error.message ?: "Export failed"
+                    status.text = error.message ?: "Capture finalization failed"
                     if (pending) {
                         showCaptureIdle(getString(R.string.capture_exporting_top))
                         CaptureSession.load(this)?.copy(exportPending = true, stage = CaptureStage.EXPORT_PENDING)?.save(this)
@@ -294,7 +294,7 @@ class MainActivity : AppCompatActivity() {
             } catch (error: Exception) {
                 val pending = runCatching { userService?.hasPendingCapture(CaptureSession.load(this)?.captureId.orEmpty()) == true }.getOrDefault(false)
                 runOnUiThread {
-                    status.text = error.message ?: "Full export failed"
+                    status.text = error.message ?: "Full capture finalization failed"
                     if (!pending) {
                         CaptureSession.clear(this)
                         resetButtons()

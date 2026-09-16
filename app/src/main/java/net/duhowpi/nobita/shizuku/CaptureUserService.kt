@@ -51,6 +51,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
         val directory = File(path).canonicalFile
         check(directory.isDirectory && directory.canWrite()) { "Capture folder is not writable" }
         synchronized(lifecycleLock) {
+            if (captureDirectoryPath == directory.path) return
             check(client == null && !exportRunning) { "Cannot change capture folder during capture" }
             captureDirectoryPath = directory.path
             runCatching { recoverInterruptedParts() }

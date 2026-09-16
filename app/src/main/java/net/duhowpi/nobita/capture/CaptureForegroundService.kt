@@ -96,14 +96,14 @@ class CaptureForegroundService : Service() {
                         }
                         CaptureFileStore.importPcapng(this@CaptureForegroundService, path)
                         success = true
-                        updateNotification("${boundService.getLastExportSummary()} — exported to Downloads/BluetoothCaptures")
+                        updateNotification("${boundService.getLastExportSummary()} — saved to the selected capture folder")
                     } catch (error: Exception) {
                         if (runCatching { service?.hasPendingCapture(session.captureId) == true }.getOrDefault(false)) {
                             CaptureSession.load(this@CaptureForegroundService)?.copy(exportPending = true, stage = CaptureStage.EXPORT_PENDING)?.save(this@CaptureForegroundService)
                         } else {
                             CaptureSession.clear(this@CaptureForegroundService)
                         }
-                        updateNotification("Capture export failed: ${error.message ?: "unknown error"}")
+                        updateNotification("Capture finalization failed: ${error.message ?: "unknown error"}")
                     }
                     finally {
                         if (wakeLock.isHeld) wakeLock.release()
