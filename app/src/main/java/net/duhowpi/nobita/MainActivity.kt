@@ -5,6 +5,8 @@ import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
+import android.os.Handler
+import android.os.Looper
 import android.os.Build
 import android.content.pm.PackageManager
 import android.widget.Button
@@ -45,6 +47,20 @@ class MainActivity : AppCompatActivity() {
     private lateinit var status: TextView
     private lateinit var captureTopBar: LinearLayout
     private lateinit var captureTopStatus: TextView
+    private val captureStatusHandler = Handler(Looper.getMainLooper())
+    private val captureStatusUpdater = object : Runnable {
+        override fun run() {
+            val session = CaptureSession.load(this@MainActivity)
+            val service = userService
+            if (session?.stage == CaptureStage.CAPTURING && service != null) {
+                val captureStatus = runCatching { service.getCaptureStatus() }.getOrNull()
+                if (captureStatus?.startsWith("CAPTURING") == true || captureStatus?.startsWith("INTERRUPTED") == true) {
+                    status.text = if (captureStatus.startsWith("INTERRUPTED")) "Capture interrupted: $captureStatus" else "Capture active: $captureStatus"
+                }
+                captureStatusHandler.postDelayed(this, 1_000)
+            }
+        }
+    }
     private val binderReceived = Shizuku.OnBinderReceivedListener { if (!isFinishing) bindUserService() }
     private val binderDead = Shizuku.OnBinderDeadListener { runOnUiThread { status.text = getString(R.string.capture_degraded) } }
     private val permissionResult = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
@@ -93,6 +109,7 @@ class MainActivity : AppCompatActivity() {
             findViewById<Button>(R.id.start_capture).visibility = android.view.View.GONE
             findViewById<Button>(R.id.stop_export).visibility = if (pending) android.view.View.GONE else android.view.View.VISIBLE
             findViewById<Button>(R.id.export_full).visibility = if (pending) android.view.View.VISIBLE else android.view.View.GONE
+            if (!pending) startCaptureStatusPolling()
         }
         if (Shizuku.pingBinder()) bindUserService() else status.text = getString(R.string.shizuku_not_ready)
     }
@@ -103,6 +120,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        captureStatusHandler.removeCallbacks(captureStatusUpdater)
         scanGeneration++
         activeScan?.let { (scanner, callback) -> scanner.stopScan(callback) }
         activeScan = null
@@ -131,6 +149,7 @@ class MainActivity : AppCompatActivity() {
                     ContextCompat.startForegroundService(this, Intent(this, CaptureForegroundService::class.java))
                     findViewById<Button>(R.id.start_capture).visibility = android.view.View.GONE
                     findViewById<Button>(R.id.stop_export).visibility = android.view.View.VISIBLE
+                    startCaptureStatusPolling()
                 }
             } catch (error: Exception) {
                 runCatching { userService?.abortCapture() }
@@ -237,9 +256,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun resetButtons() {
+        captureStatusHandler.removeCallbacks(captureStatusUpdater)
         findViewById<Button>(R.id.start_capture).visibility = android.view.View.VISIBLE
         findViewById<Button>(R.id.stop_export).visibility = android.view.View.GONE
         findViewById<Button>(R.id.export_full).visibility = android.view.View.GONE
+    }
+    private fun startCaptureStatusPolling() {
+        captureStatusHandler.removeCallbacks(captureStatusUpdater)
+        captureStatusHandler.post(captureStatusUpdater)
     }
     private fun showCaptureActive() {
         captureTopBar.setBackgroundColor(ContextCompat.getColor(this, R.color.capture_active_blue))

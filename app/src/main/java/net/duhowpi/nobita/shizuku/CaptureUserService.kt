@@ -63,6 +63,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
         val captureSaveRaw: Boolean
         val raw: File
         val id: String
+        val terminalReason: String?
         synchronized(lifecycleLock) {
             while (exportRunning) lifecycleLock.wait()
             completedExport?.let { return it }
@@ -73,7 +74,8 @@ class CaptureUserService : ICaptureUserService.Stub() {
                 error("No active btsnoop_net capture")
             }
             exportProgress = "Stopping live capture…"
-            activeClient.stop()
+            val streamStatus = activeClient.stop()
+            terminalReason = streamStatus.terminalReason?.name
             raw = activeRaw ?: error("No active capture file")
             id = captureId ?: error("No active capture ID")
             captureTarget = target
@@ -94,7 +96,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
                 raw.copyTo(finalized, overwrite = true)
                 raw.delete()
             }
-            result = convertRaw(finalized, id, captureTarget, captureSaveRaw, recovery.truncatedTail, "btsnoop_net")
+            result = convertRaw(finalized, id, captureTarget, captureSaveRaw, recovery.truncatedTail, "btsnoop_net", terminalReason)
             return result
         } finally {
             synchronized(lifecycleLock) {
@@ -105,7 +107,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
         }
     }
 
-    private fun convertRaw(raw: File, id: String, target: String, saveRaw: Boolean, truncatedTail: Boolean, source: String): String {
+    private fun convertRaw(raw: File, id: String, target: String, saveRaw: Boolean, truncatedTail: Boolean, source: String, terminalReason: String?): String {
         exportProgress = "Converting packets…"
         val directory = captureDirectory()
         val base = (target.ifBlank { "Bluetooth" }).replace(Regex("[^A-Za-z0-9._-]"), "_").take(48)
@@ -127,7 +129,11 @@ class CaptureUserService : ICaptureUserService.Stub() {
                     if (PacketFilter.matches(record, connection, target)) { writer.write(record); written++ }
                 }
             } }
-            lastExportSummary = "Capture: $source; target: ${target.ifBlank { "All devices" }}; packets: $total; target packets: $written; connections: ${handles.size}; handles: ${formatHandles(handles)}; ATT packets: $attPackets; bytes: ${raw.length()}${if (truncatedTail) "; warning: truncated incomplete tail" else ""}"
+            val warnings = listOfNotNull(
+                terminalReason?.takeUnless { it == "STOPPED" }?.let { "stream ended: ${it.lowercase(Locale.US)}" },
+                if (truncatedTail) "truncated incomplete tail" else null,
+            )
+            lastExportSummary = "Capture: $source; target: ${target.ifBlank { "All devices" }}; packets: $total; target packets: $written; connections: ${handles.size}; handles: ${formatHandles(handles)}; ATT packets: $attPackets; bytes: ${raw.length()}${if (warnings.isEmpty()) "" else "; warning: ${warnings.joinToString(", ")}"}"
             if (target.isNotBlank() && written == 0) error("No packets matched target; raw capture preserved for full export")
             PcapngValidator.validate(generated)
             exportProgress = "Finishing export…"
@@ -175,7 +181,8 @@ class CaptureUserService : ICaptureUserService.Stub() {
         when {
             active != null -> {
                 val status = active.status()
-                "CAPTURING captureId=${captureId ?: "unknown"} bytes=${status.bytesReceived} lastDataAt=${status.lastDataAt}"
+                val state = if (status.terminalReason == null) "CAPTURING" else "INTERRUPTED"
+                "$state captureId=${captureId ?: "unknown"} bytes=${status.bytesReceived} lastDataAt=${status.lastDataAt} reason=${status.terminalReason ?: "none"}"
             }
             exportRunning -> "EXPORTING captureId=${captureId ?: "unknown"}"
             completedExport != null -> "COMPLETED"
