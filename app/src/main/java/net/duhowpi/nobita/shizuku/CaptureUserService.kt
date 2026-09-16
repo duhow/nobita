@@ -9,6 +9,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 import androidx.annotation.Keep
 import net.duhowpi.nobita.btsnoop.BtsnoopFileRecovery
 import net.duhowpi.nobita.btsnoop.BtsnoopNetClient
@@ -21,7 +23,8 @@ import net.duhowpi.nobita.pcapng.PcapngWriter
 
 @Keep
 class CaptureUserService : ICaptureUserService.Stub() {
-    private val lifecycleLock = Object()
+    private val lifecycleLock = ReentrantLock()
+    private val lifecycleChanged = lifecycleLock.newCondition()
     private var client: BtsnoopNetClient? = null
     private var captureId: String? = null
     private var captureStartedAt = 0L
@@ -50,7 +53,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
     override fun setCaptureDirectory(path: String) {
         val directory = File(path).canonicalFile
         check(directory.isDirectory && directory.canWrite()) { "Capture folder is not writable" }
-        synchronized(lifecycleLock) {
+        lifecycleLock.withLock {
             if (captureDirectoryPath == directory.path) return
             check(client == null && !exportRunning) { "Cannot change capture folder during capture" }
             captureDirectoryPath = directory.path
@@ -60,7 +63,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
 
     override fun startCapture(target: String, saveRaw: Boolean): String {
         check(Process.myUid() == 2000 || Process.myUid() == 0) { "Unexpected UserService UID: ${Process.myUid()}" }
-        synchronized(lifecycleLock) {
+        lifecycleLock.withLock {
             check(client == null && !exportRunning) { "A Bluetooth capture is already active" }
             completedExport = null
             completedCaptureId = null
@@ -97,14 +100,14 @@ class CaptureUserService : ICaptureUserService.Stub() {
         val raw: File
         val id: String
         val terminalReason: String?
-        synchronized(lifecycleLock) {
-            while (exportRunning) lifecycleLock.wait()
+        lifecycleLock.withLock {
+            while (exportRunning) lifecycleChanged.await()
             completedExport?.takeIf { completedCaptureId == requestedCaptureId }?.let { return it }
             check(captureId == requestedCaptureId) { "Capture ID does not match the active session" }
             exportRunning = true
             val activeClient = client ?: run {
                 exportRunning = false
-                lifecycleLock.notifyAll()
+                lifecycleChanged.signalAll()
                 error("No active btsnoop_net capture")
             }
             exportProgress = "Stopping live capture…"
@@ -134,13 +137,13 @@ class CaptureUserService : ICaptureUserService.Stub() {
             result = convertRaw(finalized, id, captureTarget, captureSaveRaw, recovery.truncatedTail, "btsnoop_net", terminalReason)
             return result
         } finally {
-            synchronized(lifecycleLock) {
+            lifecycleLock.withLock {
                 if (result != null) {
                     completedExport = result
                     completedCaptureId = id
                 }
                 exportRunning = false
-                lifecycleLock.notifyAll()
+                lifecycleChanged.signalAll()
             }
         }
     }
@@ -214,7 +217,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
 
     override fun getLastExportSummary(): String = lastExportSummary
     override fun getExportProgress(): String = exportProgress
-    override fun getCaptureStatus(): String = synchronized(lifecycleLock) {
+    override fun getCaptureStatus(): String = lifecycleLock.withLock {
         val active = client
         when {
             active != null -> {
@@ -232,7 +235,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
     }
 
     override fun abortCapture(requestedCaptureId: String) {
-        synchronized(lifecycleLock) {
+        lifecycleLock.withLock {
             if (captureId == requestedCaptureId) abortActiveCapture()
         }
     }
@@ -246,7 +249,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
         captureStartedAt = 0L
         target = ""
         saveRaw = false
-        lifecycleLock.notifyAll()
+        lifecycleChanged.signalAll()
     }
 
     private fun preserveActiveCapture() {

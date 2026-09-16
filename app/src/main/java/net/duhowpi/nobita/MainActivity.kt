@@ -40,11 +40,14 @@ import net.duhowpi.nobita.shizuku.ICaptureUserService
 import net.duhowpi.nobita.export.CaptureFileStore
 import net.duhowpi.nobita.export.CaptureDirectory
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 import java.io.File
 
 class MainActivity : AppCompatActivity() {
     @Volatile private var userService: ICaptureUserService? = null
-    private val userServiceLock = Object()
+    private val userServiceLock = ReentrantLock()
+    private val userServiceChanged = userServiceLock.newCondition()
     @Volatile private var userServiceBinding = false
     private var exportedUri: Uri? = null
     private var activeScan: Pair<BluetoothLeScanner, ScanCallback>? = null
@@ -80,10 +83,10 @@ class MainActivity : AppCompatActivity() {
     }
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            synchronized(userServiceLock) {
+            userServiceLock.withLock {
                 userService = ICaptureUserService.Stub.asInterface(service)
                 userServiceBinding = false
-                userServiceLock.notifyAll()
+                userServiceChanged.signalAll()
             }
             status.text = "Shizuku connected (uid checked on start)"
             Thread {
@@ -115,10 +118,10 @@ class MainActivity : AppCompatActivity() {
             reconcilePendingSession()
         }
         override fun onServiceDisconnected(name: ComponentName?) {
-            synchronized(userServiceLock) {
+            userServiceLock.withLock {
                 userService = null
                 userServiceBinding = false
-                userServiceLock.notifyAll()
+                userServiceChanged.signalAll()
             }
             status.text = getString(R.string.shizuku_not_ready)
         }
@@ -384,17 +387,17 @@ class MainActivity : AppCompatActivity() {
             status.text = "Shizuku authorization is required before connecting"
             return
         }
-        synchronized(userServiceLock) {
+        userServiceLock.withLock {
             if (userService != null || userServiceBinding) return
             userServiceBinding = true
         }
         try {
             Shizuku.bindUserService(userServiceArgs(), connection)
         } catch (error: SecurityException) {
-            synchronized(userServiceLock) {
+            userServiceLock.withLock {
                 userService = null
                 userServiceBinding = false
-                userServiceLock.notifyAll()
+                userServiceChanged.signalAll()
             }
             status.text = "Shizuku authorization is required before connecting"
         }
@@ -407,12 +410,11 @@ class MainActivity : AppCompatActivity() {
         check(Shizuku.pingBinder()) { "Shizuku is not running" }
         bindUserService()
         val deadline = System.nanoTime() + 15_000_000_000L
-        synchronized(userServiceLock) {
+        userServiceLock.withLock {
             while (userService == null) {
                 val remainingNanos = deadline - System.nanoTime()
                 if (remainingNanos <= 0) break
-                val remainingMillis = (remainingNanos / 1_000_000L).coerceAtLeast(1L)
-                userServiceLock.wait(remainingMillis)
+                userServiceChanged.awaitNanos(remainingNanos)
             }
             userService?.let {
                 it.setCaptureDirectory(CaptureDirectory.path(this@MainActivity) ?: error("Capture folder is not configured"))

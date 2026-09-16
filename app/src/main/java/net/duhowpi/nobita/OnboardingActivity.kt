@@ -14,6 +14,7 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import android.view.View
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import rikka.shizuku.Shizuku
@@ -41,6 +42,9 @@ class OnboardingActivity : AppCompatActivity() {
     }
     private val shizukuBinderListener = Shizuku.OnBinderReceivedListener { runOnUiThread { refresh() } }
     private val shizukuDeadListener = Shizuku.OnBinderDeadListener { runOnUiThread { refresh() } }
+    private val folderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        handleCaptureFolder(uri)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,10 +91,8 @@ class OnboardingActivity : AppCompatActivity() {
         refresh()
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != FOLDER_REQUEST || resultCode != Activity.RESULT_OK) return
-        val uri = data?.data ?: return
+    private fun handleCaptureFolder(uri: Uri?) {
+        if (uri == null) return
         val path = runCatching { CaptureDirectory.resolveTreeUri(uri) }.getOrNull()
         if (path == null) {
             folderStatus.text = getString(R.string.onboarding_folder_unsupported)
@@ -167,9 +169,7 @@ class OnboardingActivity : AppCompatActivity() {
     }
 
     private fun chooseCaptureFolder() {
-        startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
-        }, FOLDER_REQUEST)
+        folderPicker.launch(null)
     }
 
     private fun requiredAccessAvailable() = Shizuku.pingBinder() &&
@@ -194,7 +194,6 @@ class OnboardingActivity : AppCompatActivity() {
         private const val SHIZUKU_REQUEST = 100
         private const val BLUETOOTH_REQUEST = 101
         private const val NOTIFICATION_REQUEST = 102
-        private const val FOLDER_REQUEST = 103
         private const val SHIZUKU_PACKAGE = "moe.shizuku.privileged.api"
         private val BLUETOOTH_PERMISSIONS = arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
     }
