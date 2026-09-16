@@ -227,7 +227,7 @@ class MainActivity : AppCompatActivity() {
         captureTopStatus.text = message
     }
     private fun showCaptureComplete(summary: String) {
-        val packets = Regex("packets: (\\d+)").find(summary)?.groupValues?.get(1)?.toIntOrNull()
+        val packets = Regex("packets: (\\d+)", RegexOption.IGNORE_CASE).find(summary)?.groupValues?.get(1)?.toIntOrNull()
         showCaptureIdle(getString(R.string.capture_complete_top) + if (packets != null) " — " + getString(R.string.capture_packets_count, packets) else "")
     }
     private fun openOrShare(share: Boolean) {
