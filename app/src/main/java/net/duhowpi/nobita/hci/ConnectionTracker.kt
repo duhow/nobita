@@ -10,7 +10,24 @@ class ConnectionTracker {
     fun connectionFor(record: BtsnoopRecord): Connection? {
         val packet = record.packet
         if (packet.isEmpty()) return null
-        if (packet[0].toInt() and 0xff == 0x04) parseEvent(packet)
+        if (packet[0].toInt() and 0xff == 0x04) {
+            val event = if (packet.size > 1) packet[1].toInt() and 0xff else return null
+            if (event == 0x05 && packet.size >= 6) {
+                return connections.remove(readLe16(packet, 4) and 0x0fff)
+            }
+            parseEvent(packet)
+            return when (event) {
+                0x03 -> if (packet.size >= 6) connections[readLe16(packet, 4)] else null
+                0x07 -> if (packet.size >= 10) {
+                    val address = address(packet, 4)
+                    connections.values.firstOrNull { it.address == address }
+                } else null
+                0x3e -> if (packet.size >= 6 && packet[3].toInt() and 0xff in intArrayOf(0x01, 0x0a)) {
+                    connections[readLe16(packet, 5)]
+                } else null
+                else -> null
+            }
+        }
         when (packet[0].toInt() and 0xff) {
             0x02, 0x03, 0x05 -> if (packet.size >= 3) return connections[readLe16(packet, 1) and 0x0fff]
         }
@@ -28,7 +45,6 @@ class ConnectionTracker {
                 val address = address(packet, 4)
                 rememberName(address, packet.copyOfRange(10, packet.size).takeWhile { it.toInt() != 0 }.toByteArray().toString(Charsets.UTF_8))
             }
-            0x05 -> if (packet.size >= 6) connections.remove(readLe16(packet, 4) and 0x0fff)
             0x3e -> if (packet.size >= 4) when (packet[3].toInt() and 0xff) {
                 0x01, 0x0a -> if (packet.size >= 15) {
                     val handle = readLe16(packet, 5)
