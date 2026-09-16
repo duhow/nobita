@@ -32,7 +32,7 @@ import net.duhowpi.nobita.shizuku.ICaptureUserService
 import net.duhowpi.nobita.export.CaptureFileStore
 
 class MainActivity : AppCompatActivity() {
-    private var userService: ICaptureUserService? = null
+    @Volatile private var userService: ICaptureUserService? = null
     private var exportedUri: Uri? = null
     private lateinit var status: TextView
     private val binderReceived = Shizuku.OnBinderReceivedListener { if (!isFinishing) bindUserService() }
@@ -84,7 +84,7 @@ class MainActivity : AppCompatActivity() {
         }
         Thread {
             try {
-                val result = withWakeLock { userService?.prepareCapture() ?: error("Shizuku UserService is not connected") }
+                val result = withWakeLock { requireUserService().prepareCapture() }
                 runOnUiThread {
                     val environment = result.substringAfter("previous=", "disabled").substringBefore(" initialBluetooth=")
                     val initialBluetooth = result.substringAfter("initialBluetooth=", "true").toBoolean()
@@ -109,7 +109,7 @@ class MainActivity : AppCompatActivity() {
                 val target = findViewById<android.widget.EditText>(R.id.target).text.toString()
                 val saveRaw = findViewById<android.widget.CheckBox>(R.id.save_raw).isChecked
                 val session = CaptureSession.load(this) ?: error("No active capture session")
-                val path = withWakeLock { userService?.exportPcapng(target, saveRaw, session.previousMode, session.bluetoothInitiallyEnabled) ?: error("Shizuku UserService is not connected") }
+                val path = withWakeLock { requireUserService().exportPcapng(target, saveRaw, session.previousMode, session.bluetoothInitiallyEnabled) }
                 val uri = CaptureFileStore.importPcapng(this, path)
                 runOnUiThread {
                     CaptureSession.clear(this); exportedUri = uri
@@ -124,7 +124,7 @@ class MainActivity : AppCompatActivity() {
         Thread {
             try {
                 val session = CaptureSession.load(this) ?: error("No pending capture session")
-                val path = withWakeLock { userService?.exportFullCapture(session.previousMode, session.bluetoothInitiallyEnabled) ?: error("Shizuku UserService is not connected") }
+                val path = withWakeLock { requireUserService().exportFullCapture(session.previousMode, session.bluetoothInitiallyEnabled) }
                 val uri = CaptureFileStore.importPcapng(this, path)
                 runOnUiThread { CaptureSession.clear(this); exportedUri = uri; status.text = "Full PCAPNG exported"; findViewById<Button>(R.id.export_full).visibility = android.view.View.GONE; findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE; resetButtons() }
             } catch (error: Exception) { runOnUiThread { status.text = error.message ?: "Full export failed" } }
@@ -144,6 +144,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun bindUserService() { Shizuku.bindUserService(userServiceArgs(), connection) }
+    private fun requireUserService(): ICaptureUserService {
+        userService?.let { return it }
+        check(Shizuku.pingBinder()) { "Shizuku is not running" }
+        bindUserService()
+        repeat(20) {
+            userService?.let { return it }
+            Thread.sleep(250)
+        }
+        error("Shizuku UserService is not connected")
+    }
     private fun userServiceArgs() = Shizuku.UserServiceArgs(ComponentName(this, CaptureUserService::class.java)).daemon(true).tag("bluetooth-capture").version(1)
     private fun requestNotifications() {
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
