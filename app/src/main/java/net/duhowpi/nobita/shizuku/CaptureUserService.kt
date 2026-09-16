@@ -20,6 +20,8 @@ import net.duhowpi.nobita.pcapng.PcapngValidator
 @Keep
 class CaptureUserService : ICaptureUserService.Stub() {
     private var previousMode: String? = null
+    private var previousDefaultMode: String? = null
+    private var propertyModeChanged = false
     private var bluetoothInitiallyEnabled = false
     private var lastExportSummary = ""
 
@@ -31,17 +33,30 @@ class CaptureUserService : ICaptureUserService.Stub() {
     override fun prepareCapture(): String {
         check(Process.myUid() == 2000 || Process.myUid() == 0) { "Unexpected UserService UID: ${Process.myUid()}" }
         previousMode = command("getprop", "persist.bluetooth.btsnooplogmode").trim().ifEmpty { "disabled" }
+        previousDefaultMode = command("settings", "get", "global", "bluetooth_btsnoop_default_mode").trim().ifEmpty { "null" }
         bluetoothInitiallyEnabled = command("settings", "get", "global", "bluetooth_on").trim() == "1"
-        command("setprop", "persist.bluetooth.btsnooplogmode", "full")
-        check(command("getprop", "persist.bluetooth.btsnooplogmode").trim() == "full") { "Bluetooth snoop mode was rejected" }
+        propertyModeChanged = runCatching {
+            command("setprop", "persist.bluetooth.btsnooplogmode", "full")
+            check(command("getprop", "persist.bluetooth.btsnooplogmode").trim() == "full")
+        }.isSuccess
+        try {
+            command("settings", "put", "global", "bluetooth_btsnoop_default_mode", "full")
+        } catch (_: IllegalStateException) {
+            error("Bluetooth snoop logging is unavailable: grant Nobita root access in Shizuku or use a device that allows the Bluetooth snoop setting to be changed")
+        }
+        check(command("settings", "get", "global", "bluetooth_btsnoop_default_mode").trim() == "full") {
+            "Bluetooth snoop logging is unavailable: this device rejected both the property and global setting"
+        }
         // The stack must be restarted for the new snoop mode to take effect. If Bluetooth
         // was initially off, restoreCaptureEnvironment turns it off again after export.
         restartBluetooth()
-        return "uid=${Process.myUid()} mode=full previous=$previousMode initialBluetooth=$bluetoothInitiallyEnabled"
+        return "uid=${Process.myUid()} mode=full previous=$previousMode defaultMode=$previousDefaultMode propertyChanged=$propertyModeChanged initialBluetooth=$bluetoothInitiallyEnabled"
     }
 
-    override fun exportPcapng(target: String, saveRaw: Boolean, previousMode: String, bluetoothInitiallyEnabled: Boolean): String {
+    override fun exportPcapng(target: String, saveRaw: Boolean, previousMode: String, previousDefaultMode: String, propertyModeChanged: Boolean, bluetoothInitiallyEnabled: Boolean): String {
         this.previousMode = previousMode
+        this.previousDefaultMode = previousDefaultMode
+        this.propertyModeChanged = propertyModeChanged
         this.bluetoothInitiallyEnabled = bluetoothInitiallyEnabled
         var bugreport: File? = null
         var raw: File? = null
@@ -96,12 +111,14 @@ class CaptureUserService : ICaptureUserService.Stub() {
             if (!converted) output?.delete()
             raw?.delete()
             bugreport?.delete()
-            restoreCaptureEnvironment(previousMode, bluetoothInitiallyEnabled)
+            restoreCaptureEnvironment(previousMode, previousDefaultMode, propertyModeChanged, bluetoothInitiallyEnabled)
         }
     }
 
-    override fun exportFullCapture(previousMode: String, bluetoothInitiallyEnabled: Boolean): String {
+    override fun exportFullCapture(previousMode: String, previousDefaultMode: String, propertyModeChanged: Boolean, bluetoothInitiallyEnabled: Boolean): String {
         this.previousMode = previousMode
+        this.previousDefaultMode = previousDefaultMode
+        this.propertyModeChanged = propertyModeChanged
         this.bluetoothInitiallyEnabled = bluetoothInitiallyEnabled
         val directory = captureDirectory()
         val raw = directory.listFiles { file -> file.name.startsWith(".pending-") && file.name.endsWith(".btsnoop") }
@@ -125,7 +142,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
             return output.absolutePath
         } finally {
             if (!output.isFile) output.delete()
-            restoreCaptureEnvironment(previousMode, bluetoothInitiallyEnabled)
+            restoreCaptureEnvironment(previousMode, previousDefaultMode, propertyModeChanged, bluetoothInitiallyEnabled)
         }
     }
 
@@ -137,8 +154,10 @@ class CaptureUserService : ICaptureUserService.Stub() {
             ?.forEach { it.delete() }
     }
 
-    override fun restoreCaptureEnvironment(previousMode: String, bluetoothInitiallyEnabled: Boolean) {
-        command("setprop", "persist.bluetooth.btsnooplogmode", previousMode)
+    override fun restoreCaptureEnvironment(previousMode: String, previousDefaultMode: String, propertyModeChanged: Boolean, bluetoothInitiallyEnabled: Boolean) {
+        if (propertyModeChanged) command("setprop", "persist.bluetooth.btsnooplogmode", previousMode)
+        if (previousDefaultMode == "null" || previousDefaultMode.isEmpty()) command("settings", "delete", "global", "bluetooth_btsnoop_default_mode")
+        else command("settings", "put", "global", "bluetooth_btsnoop_default_mode", previousDefaultMode)
         if (bluetoothInitiallyEnabled) restartBluetooth() else {
             command("cmd", "bluetooth_manager", "disable")
             command("cmd", "bluetooth_manager", "wait-for-state:STATE_OFF")
@@ -147,7 +166,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
 
     override fun abortCapture() {
         val mode = previousMode ?: return
-        restoreCaptureEnvironment(mode, bluetoothInitiallyEnabled)
+        restoreCaptureEnvironment(mode, previousDefaultMode ?: "null", propertyModeChanged, bluetoothInitiallyEnabled)
     }
 
     private fun restartBluetooth() {

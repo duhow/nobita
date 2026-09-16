@@ -8,3 +8,4 @@
 - Added detected ATT packet counts to export results.
 - Battery optimization now opens Nobita's app-specific settings.
 - Nearby scanning shows progress and the number of devices found.
+- Added a fallback for devices that reject direct Bluetooth snoop property changes.

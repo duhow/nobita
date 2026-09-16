@@ -47,7 +47,7 @@ class CaptureForegroundService : Service() {
         if (session != null && Shizuku.pingBinder()) {
             try { Shizuku.bindUserService(userServiceArgs(), object : ServiceConnection {
                 override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-                    try { ICaptureUserService.Stub.asInterface(binder).restoreCaptureEnvironment(session.previousMode, session.bluetoothInitiallyEnabled) }
+                    try { ICaptureUserService.Stub.asInterface(binder).restoreCaptureEnvironment(session.previousMode, session.previousDefaultMode, session.propertyModeChanged, session.bluetoothInitiallyEnabled) }
                     finally { Shizuku.unbindUserService(userServiceArgs(), this, true) }
                 }
                 override fun onServiceDisconnected(name: ComponentName?) = Unit
@@ -72,7 +72,7 @@ class CaptureForegroundService : Service() {
                     var success = false
                     try {
                         val service = ICaptureUserService.Stub.asInterface(binder)
-                        val path = service.exportPcapng(target, false, session.previousMode, session.bluetoothInitiallyEnabled)
+                        val path = service.exportPcapng(target, false, session.previousMode, session.previousDefaultMode, session.propertyModeChanged, session.bluetoothInitiallyEnabled)
                         CaptureFileStore.importPcapng(this@CaptureForegroundService, path)
                         success = true
                         updateNotification("${service.getLastExportSummary()} — exported to Downloads/BluetoothCaptures")

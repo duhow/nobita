@@ -99,11 +99,13 @@ class MainActivity : AppCompatActivity() {
             try {
                 val result = withWakeLock { requireUserService().prepareCapture() }
                 runOnUiThread {
-                    val environment = result.substringAfter("previous=", "disabled").substringBefore(" initialBluetooth=")
+                    val environment = result.substringAfter("previous=", "disabled").substringBefore(" defaultMode=")
+                    val previousDefaultMode = result.substringAfter("defaultMode=", "null").substringBefore(" propertyChanged=")
+                    val propertyModeChanged = result.substringAfter("propertyChanged=", "true").substringBefore(" initialBluetooth=").toBoolean()
                     val initialBluetooth = result.substringAfter("initialBluetooth=", "true").toBoolean()
                     val target = findViewById<android.widget.EditText>(R.id.target).text.toString()
                     TargetHistory.add(this, target)
-                    CaptureSession(System.currentTimeMillis(), target, environment, initialBluetooth).save(this)
+                    CaptureSession(System.currentTimeMillis(), target, environment, previousDefaultMode, propertyModeChanged, initialBluetooth).save(this)
                     status.text = "Capture active: $result"
                     ContextCompat.startForegroundService(this, Intent(this, CaptureForegroundService::class.java))
                     findViewById<Button>(R.id.start_capture).visibility = android.view.View.GONE
@@ -125,7 +127,7 @@ class MainActivity : AppCompatActivity() {
                 val session = CaptureSession.load(this) ?: error("No active capture session")
                 val exported = withWakeLock {
                     val service = requireUserService()
-                    service.exportPcapng(target, saveRaw, session.previousMode, session.bluetoothInitiallyEnabled) to service.getLastExportSummary()
+                    service.exportPcapng(target, saveRaw, session.previousMode, session.previousDefaultMode, session.propertyModeChanged, session.bluetoothInitiallyEnabled) to service.getLastExportSummary()
                 }
                 val uri = CaptureFileStore.importPcapng(this, exported.first)
                 runOnUiThread {
@@ -152,7 +154,7 @@ class MainActivity : AppCompatActivity() {
                 val session = CaptureSession.load(this) ?: error("No pending capture session")
                 val exported = withWakeLock {
                     val service = requireUserService()
-                    service.exportFullCapture(session.previousMode, session.bluetoothInitiallyEnabled) to service.getLastExportSummary()
+                    service.exportFullCapture(session.previousMode, session.previousDefaultMode, session.propertyModeChanged, session.bluetoothInitiallyEnabled) to service.getLastExportSummary()
                 }
                 val uri = CaptureFileStore.importPcapng(this, exported.first)
                 runOnUiThread { CaptureSession.clear(this); exportedUri = uri; status.text = "Full capture complete: ${exported.second}"; findViewById<Button>(R.id.export_full).visibility = android.view.View.GONE; findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE; resetButtons() }
