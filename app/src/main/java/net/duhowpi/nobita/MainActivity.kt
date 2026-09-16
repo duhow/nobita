@@ -24,7 +24,6 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.BluetoothLeScanner
 import android.app.AlertDialog
-import android.provider.Settings
 import android.view.animation.AnimationUtils
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -138,7 +137,6 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.export_full).setOnClickListener { exportFullCapture() }
         findViewById<Button>(R.id.choose_paired).setOnClickListener { choosePairedDevice() }
         findViewById<Button>(R.id.scan_nearby).setOnClickListener { scanNearby() }
-        findViewById<Button>(R.id.battery_settings).setOnClickListener { openBatteryOptimizationSettings() }
         findViewById<Button>(R.id.choose_recent).setOnClickListener { chooseRecentTarget() }
         findViewById<Button>(R.id.open_capture).setOnClickListener { openOrShare(false) }
         findViewById<Button>(R.id.share_capture).setOnClickListener { openOrShare(true) }
@@ -545,17 +543,6 @@ class MainActivity : AppCompatActivity() {
         indicator.clearAnimation()
         indicator.visibility = android.view.View.GONE
         findViewById<TextView>(R.id.scan_status).text = getString(R.string.scan_failed, errorCode)
-    }
-    private fun openBatteryOptimizationSettings() {
-        val direct = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-            .setData(Uri.parse("package:$packageName"))
-        try {
-            startActivity(direct)
-        } catch (_: SecurityException) {
-            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-        } catch (_: android.content.ActivityNotFoundException) {
-            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-        }
     }
     private fun elapsed(startedAt: Long): String = "${((System.currentTimeMillis() - startedAt) / 1000)}s"
     private val bluetoothAdapter: BluetoothAdapter?
