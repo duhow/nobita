@@ -14,6 +14,7 @@ import android.net.Uri
 import android.os.PowerManager
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
@@ -154,7 +155,7 @@ class MainActivity : AppCompatActivity() {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.BLUETOOTH_CONNECT), 21)
             return
         }
-        val devices = BluetoothAdapter.getDefaultAdapter()?.bondedDevices?.sortedBy { it.name ?: it.address }.orEmpty()
+        val devices = bluetoothAdapter?.bondedDevices?.sortedBy { it.name ?: it.address }.orEmpty()
         if (devices.isEmpty()) { status.text = getString(R.string.no_paired_devices); return }
         val labels = devices.map { "${it.name ?: "Unknown device"}\n${it.address}" }.toTypedArray()
         AlertDialog.Builder(this).setTitle(R.string.choose_paired).setItems(labels) { _, which ->
@@ -175,7 +176,7 @@ class MainActivity : AppCompatActivity() {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 23)
             return
         }
-        val scanner = BluetoothAdapter.getDefaultAdapter()?.bluetoothLeScanner ?: run { status.text = getString(R.string.no_nearby_devices); return }
+        val scanner = bluetoothAdapter?.bluetoothLeScanner ?: run { status.text = getString(R.string.no_nearby_devices); return }
         val found = linkedMapOf<String, BluetoothDevice>()
         val callback = object : ScanCallback() {
             override fun onScanResult(type: Int, result: ScanResult) { found[result.device.address] = result.device }
@@ -194,6 +195,8 @@ class MainActivity : AppCompatActivity() {
         }, 8_000)
     }
     private fun elapsed(startedAt: Long): String = "${((System.currentTimeMillis() - startedAt) / 1000)}s"
+    private val bluetoothAdapter: BluetoothAdapter?
+        get() = getSystemService(BluetoothManager::class.java)?.adapter
     private fun <T> withWakeLock(block: () -> T): T {
         val power = getSystemService(PowerManager::class.java)
         val lock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Nobita:capture").apply { setReferenceCounted(false); acquire(10 * 60 * 1000L) }
