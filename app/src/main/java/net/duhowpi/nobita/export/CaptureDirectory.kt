@@ -27,7 +27,7 @@ object CaptureDirectory {
         val selected = uri(context) ?: return false
         val directory = path(context)?.let(::File) ?: return false
         return DocumentFile.fromTreeUri(context, selected)?.canWrite() == true &&
-            directory.isDirectory && directory.canWrite()
+            directory.isDirectory
     }
 
     fun resolveTreeUri(uri: Uri): String? {
