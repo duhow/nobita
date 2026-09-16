@@ -125,7 +125,11 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         captureStatusHandler.removeCallbacks(captureStatusUpdater)
         scanGeneration++
-        activeScan?.let { (scanner, callback) -> scanner.stopScan(callback) }
+        activeScan?.let { (scanner, callback) ->
+            if (checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED) {
+                runCatching { scanner.stopScan(callback) }
+            }
+        }
         activeScan = null
         Shizuku.removeBinderReceivedListener(binderReceived)
         Shizuku.removeBinderDeadListener(binderDead)
@@ -432,7 +436,9 @@ class MainActivity : AppCompatActivity() {
         }
         android.os.Handler(mainLooper).postDelayed({
             if (generation != scanGeneration || activeScan?.second !== callback) return@postDelayed
-            scanner.stopScan(callback)
+            if (checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED) {
+                runCatching { scanner.stopScan(callback) }
+            }
             activeScan = null
             val devices = found.values.sortedBy { it.name ?: it.address }
             runOnUiThread {
