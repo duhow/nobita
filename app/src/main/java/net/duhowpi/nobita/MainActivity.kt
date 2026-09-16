@@ -56,6 +56,10 @@ class MainActivity : AppCompatActivity() {
             if (session?.stage == CaptureStage.CAPTURING && service != null) {
                 val captureStatus = runCatching { service.getCaptureStatus() }.getOrNull()?.let(::parseCaptureStatus)
                 if (captureStatus?.state == "CAPTURING" || captureStatus?.state == "INTERRUPTED") {
+                    CaptureSession.load(this@MainActivity)?.copy(
+                        bytesReceived = captureStatus.bytes,
+                        lastDataAt = captureStatus.lastDataAt,
+                    )?.save(this@MainActivity)
                     status.text = captureStatusText(captureStatus)
                 }
                 captureStatusHandler.postDelayed(this, 1_000)

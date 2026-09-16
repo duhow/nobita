@@ -10,6 +10,8 @@ data class CaptureSession(
     val captureId: String = "",
     val saveRaw: Boolean = false,
     val source: String = "btsnoop_net",
+    val bytesReceived: Long = 0,
+    val lastDataAt: Long = 0,
     val exportPending: Boolean = false,
     val stage: CaptureStage = CaptureStage.CAPTURING,
 ) {
@@ -22,6 +24,7 @@ data class CaptureSession(
     fun save(context: Context) = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit()
         .putLong(KEY_STARTED, startedAt).putString(KEY_TARGET, target).putString(KEY_CAPTURE_ID, captureId)
         .putBoolean(KEY_SAVE_RAW, saveRaw).putString(KEY_SOURCE, source)
+        .putLong(KEY_BYTES_RECEIVED, bytesReceived).putLong(KEY_LAST_DATA_AT, lastDataAt)
         .putBoolean(KEY_EXPORT_PENDING, exportPending).putString(KEY_STAGE, stage.name).apply()
 
     companion object {
@@ -31,6 +34,8 @@ data class CaptureSession(
         private const val KEY_CAPTURE_ID = "capture_id"
         private const val KEY_SAVE_RAW = "save_raw"
         private const val KEY_SOURCE = "source"
+        private const val KEY_BYTES_RECEIVED = "bytes_received"
+        private const val KEY_LAST_DATA_AT = "last_data_at"
         private const val KEY_EXPORT_PENDING = "export_pending"
         private const val KEY_STAGE = "stage"
         fun load(context: Context): CaptureSession? {
@@ -42,6 +47,8 @@ data class CaptureSession(
                 preferences.getString(KEY_CAPTURE_ID, "") ?: "",
                 preferences.getBoolean(KEY_SAVE_RAW, false),
                 preferences.getString(KEY_SOURCE, "btsnoop_net") ?: "btsnoop_net",
+                preferences.getLong(KEY_BYTES_RECEIVED, 0),
+                preferences.getLong(KEY_LAST_DATA_AT, 0),
                 preferences.getBoolean(KEY_EXPORT_PENDING, false),
                 runCatching { CaptureStage.valueOf(preferences.getString(KEY_STAGE, CaptureStage.CAPTURING.name)!!) }
                     .getOrDefault(CaptureStage.CAPTURING),

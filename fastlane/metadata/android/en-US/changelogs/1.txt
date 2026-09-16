@@ -37,3 +37,4 @@
 - Made stop and export operations safe against stale or duplicate capture actions.
 - Made capture-start responses versioned and machine-readable.
 - Refused capture startup when staging storage is unavailable or too low.
+- Persisted live packet progress so capture state survives Activity recreation.
