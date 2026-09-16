@@ -140,6 +140,7 @@ class MainActivity : AppCompatActivity() {
     private fun stopAndExport() {
         val target = findViewById<android.widget.EditText>(R.id.target).text.toString()
         val saveRaw = findViewById<android.widget.CheckBox>(R.id.save_raw).isChecked
+        findViewById<Button>(R.id.stop_export).isEnabled = false
         CaptureSession.load(this)?.copy(stage = CaptureStage.EXPORTING)?.save(this)
         showCaptureIdle(getString(R.string.capture_exporting_top))
         Thread {
@@ -164,6 +165,7 @@ class MainActivity : AppCompatActivity() {
                         showCaptureIdle(getString(R.string.capture_exporting_top))
                         CaptureSession.load(this)?.copy(exportPending = true, stage = CaptureStage.EXPORT_PENDING)?.save(this)
                         findViewById<Button>(R.id.export_full).visibility = android.view.View.VISIBLE
+                        findViewById<Button>(R.id.export_full).isEnabled = true
                         findViewById<Button>(R.id.start_capture).visibility = android.view.View.GONE
                         findViewById<Button>(R.id.stop_export).visibility = android.view.View.GONE
                     } else {
@@ -177,6 +179,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun exportFullCapture() {
+        findViewById<Button>(R.id.export_full).isEnabled = false
         Thread {
             try {
                 val session = CaptureSession.load(this) ?: error("No pending capture session")
@@ -193,6 +196,8 @@ class MainActivity : AppCompatActivity() {
                     if (!pending) {
                         CaptureSession.clear(this)
                         resetButtons()
+                    } else {
+                        findViewById<Button>(R.id.export_full).isEnabled = true
                     }
                 }
             }
