@@ -26,11 +26,11 @@ def getGitVersionCode = { ->
 }
 
 android {
-    namespace 'net.duhowpi.myapp'
+    namespace 'net.duhowpi.nobita'
     compileSdk 35
 
     defaultConfig {
-        applicationId "net.duhowpi.myapp"
+        applicationId "net.duhowpi.nobita"
         minSdk 26
         targetSdk 35
         versionCode getGitVersionCode()

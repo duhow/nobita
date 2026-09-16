@@ -1,1 +1,1 @@
-Full description of app.
+Nobita is an Android application for recording Bluetooth communication directly from your Android device using Shizuku. Bluetooth capture functionality is under active development.

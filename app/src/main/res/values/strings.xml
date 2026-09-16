@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">My App</string>
+    <string name="app_name">Nobita</string>
+    <string name="app_description">Bluetooth communication recorder using Shizuku.</string>
 </resources>

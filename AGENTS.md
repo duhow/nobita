@@ -1,13 +1,5 @@
 # Agents Notes
 
-## IMPORTANT: To start
-
-This repo is now a blank template to begin with a Kotlin project.
-To facilitate the setup, there are some preloaded configurations defined, but
-you still must create the required missing files, such as MainActivity, XML.
-If you know it, change the Application name (MyApp) in `settings.gradle`, `build.gradle`, `Appfile`, XML and README.
-Once the base code is established, erase this section "To start" from `AGENTS.md`.
-
 ## Commits
 
 Use Conventional Commits in PR title. Common types are feat, fix, chore, refactor, perf, ci, docs.

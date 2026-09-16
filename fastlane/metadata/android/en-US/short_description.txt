@@ -1,1 +1,1 @@
-Short description of app.
+Record Bluetooth communication directly from your Android device.
