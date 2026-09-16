@@ -18,6 +18,7 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
+import android.bluetooth.le.BluetoothLeScanner
 import android.app.AlertDialog
 import android.provider.Settings
 import android.view.animation.AnimationUtils
@@ -37,6 +38,8 @@ import net.duhowpi.nobita.export.CaptureFileStore
 class MainActivity : AppCompatActivity() {
     @Volatile private var userService: ICaptureUserService? = null
     private var exportedUri: Uri? = null
+    private var activeScan: Pair<BluetoothLeScanner, ScanCallback>? = null
+    private var scanGeneration = 0
     private lateinit var status: TextView
     private val binderReceived = Shizuku.OnBinderReceivedListener { if (!isFinishing) bindUserService() }
     private val binderDead = Shizuku.OnBinderDeadListener { runOnUiThread { status.text = "Capture degraded: Shizuku stopped. Bluetooth logging may still be active; open Shizuku before exporting." } }
@@ -83,6 +86,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        scanGeneration++
+        activeScan?.let { (scanner, callback) -> scanner.stopScan(callback) }
+        activeScan = null
         Shizuku.removeBinderReceivedListener(binderReceived)
         Shizuku.removeBinderDeadListener(binderDead)
         Shizuku.removeRequestPermissionResultListener(permissionResult)
@@ -225,6 +231,7 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this).setTitle(R.string.choose_recent).setItems(targets.toTypedArray()) { _, which -> findViewById<android.widget.EditText>(R.id.target).setText(targets[which]) }.show()
     }
     private fun scanNearby() {
+        if (activeScan != null) return
         if (Build.VERSION.SDK_INT >= 31 && checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT), 22)
             return
@@ -237,16 +244,41 @@ class MainActivity : AppCompatActivity() {
         val found = linkedMapOf<String, BluetoothDevice>()
         val callback = object : ScanCallback() {
             override fun onScanResult(type: Int, result: ScanResult) { found[result.device.address] = result.device }
-            override fun onScanFailed(errorCode: Int) { runOnUiThread { showScanFailed(errorCode) } }
+            override fun onScanFailed(errorCode: Int) {
+                runOnUiThread {
+                    if (activeScan?.second === this) {
+                        activeScan = null
+                        showScanFailed(errorCode)
+                    }
+                }
+            }
         }
+        val generation = ++scanGeneration
         val scanStatus = findViewById<TextView>(R.id.scan_status)
+        val scanButton = findViewById<Button>(R.id.scan_nearby)
         val scanIndicator = findViewById<android.widget.ImageView>(R.id.scan_indicator)
         scanStatus.text = getString(R.string.scan_in_progress)
+        scanButton.isEnabled = false
         scanIndicator.visibility = android.view.View.VISIBLE
         scanIndicator.startAnimation(AnimationUtils.loadAnimation(this, R.anim.rotate))
-        scanner.startScan(callback)
+        activeScan = scanner to callback
+        try {
+            scanner.startScan(callback)
+        } catch (_: SecurityException) {
+            activeScan = null
+            scanButton.isEnabled = true
+            showScanFailed(-1)
+            return
+        } catch (_: IllegalStateException) {
+            activeScan = null
+            scanButton.isEnabled = true
+            showScanFailed(-1)
+            return
+        }
         android.os.Handler(mainLooper).postDelayed({
+            if (generation != scanGeneration || activeScan?.second !== callback) return@postDelayed
             scanner.stopScan(callback)
+            activeScan = null
             val devices = found.values.sortedBy { it.name ?: it.address }
             runOnUiThread {
                 showScanComplete(devices.size)
@@ -257,12 +289,14 @@ class MainActivity : AppCompatActivity() {
         }, 8_000)
     }
     private fun showScanComplete(count: Int) {
+        findViewById<Button>(R.id.scan_nearby).isEnabled = true
         val indicator = findViewById<android.widget.ImageView>(R.id.scan_indicator)
         indicator.clearAnimation()
         indicator.visibility = android.view.View.GONE
         findViewById<TextView>(R.id.scan_status).text = resources.getQuantityString(R.plurals.nearby_devices_found, count, count)
     }
     private fun showScanFailed(errorCode: Int) {
+        findViewById<Button>(R.id.scan_nearby).isEnabled = true
         val indicator = findViewById<android.widget.ImageView>(R.id.scan_indicator)
         indicator.clearAnimation()
         indicator.visibility = android.view.View.GONE

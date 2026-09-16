@@ -9,3 +9,4 @@
 - Battery optimization now opens Nobita's app-specific settings.
 - Nearby scanning shows progress and the number of devices found.
 - Added a fallback for devices that reject direct Bluetooth snoop property changes.
+- Prevented overlapping nearby scans from replacing failure feedback with stale results.
