@@ -196,13 +196,39 @@ class CaptureUserService : ICaptureUserService.Stub() {
     override fun abortCapture() {
         synchronized(lifecycleLock) {
             client?.stop()
+            preserveActiveCapture()
             client = null
-            activeRaw?.delete()
             activeRaw = null
             captureId = null
             target = ""
             saveRaw = false
             lifecycleLock.notifyAll()
+        }
+    }
+
+    private fun preserveActiveCapture() {
+        val raw = activeRaw ?: return
+        val id = captureId ?: return
+        runCatching {
+            val recovery = BtsnoopFileRecovery.truncateToCompleteRecords(raw)
+            if (recovery.malformedRecord && recovery.completeLength < raw.length()) {
+                java.io.RandomAccessFile(raw, "rw").use { it.setLength(recovery.completeLength) }
+            }
+            if (recovery.records == 0L) {
+                raw.delete()
+                return
+            }
+            val pending = File(captureDirectory(), ".pending-$id.btsnoop")
+            if (!raw.renameTo(pending)) {
+                raw.copyTo(pending, overwrite = true)
+                raw.delete()
+            }
+        }.onFailure {
+            val pending = File(captureDirectory(), ".pending-$id.btsnoop")
+            if (!raw.renameTo(pending)) {
+                raw.copyTo(pending, overwrite = true)
+                raw.delete()
+            }
         }
     }
 
