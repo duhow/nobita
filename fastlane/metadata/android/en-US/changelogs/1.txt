@@ -1,11 +1,11 @@
 - Initial Nobita application setup.
-- Added local Shizuku-backed Bluetooth HCI capture and PCAPNG export.
+- Added local Shizuku-backed Bluetooth HCI capture and PCAPNG finalization.
 - Added paired and nearby device selection plus optional raw BTSnoop retention.
 - Added safe full-capture fallback when target filtering finds no packets.
 - Fixed startup crashes when connecting to Shizuku.
 - Prevented startup crashes when Shizuku authorization is missing.
-- Added packet and connection counts to export results.
-- Added detected ATT packet counts to export results.
+- Added packet and connection counts to finalization results.
+- Added detected ATT packet counts to finalization results.
 - Battery optimization now opens Nobita's app-specific settings.
 - Nearby scanning shows progress and the number of devices found.
 - Added a fallback for devices that reject direct Bluetooth snoop property changes.
@@ -14,14 +14,14 @@
 - Added first-launch onboarding for Shizuku, Nearby devices, notifications, and optional battery optimization.
 - Stopped changing or restarting Bluetooth during capture setup and cleanup.
 - Added a blue capture-active top bar and packet-count feedback.
-- Fixed failed exports getting stuck on an unavailable full-capture action.
+- Fixed failed finalizations getting stuck on an unavailable full-capture action.
 - Reconciled stale pending sessions when the app reconnects to Shizuku.
-- Refreshed capture controls when returning to the app after background export cleanup.
-- Preserved recoverable raw captures when the Shizuku service disconnects during export.
-- Prevented duplicate export requests while a capture is being processed.
-- Fixed full capture export failures for controller-to-host packets.
-- Showed the processed packet count after full capture export.
-- Added visible export progress stages and clearer onboarding permission states.
+- Refreshed capture controls when returning to the app after background finalization cleanup.
+- Preserved recoverable raw captures when the Shizuku service disconnects during finalization.
+- Prevented duplicate finalization requests while a capture is being processed.
+- Fixed full capture finalization failures for controller-to-host packets.
+- Showed the processed packet count after full capture finalization.
+- Added visible finalization progress stages and clearer onboarding permission states.
 - Made onboarding permission checks visible in dark mode and fixed their title alignment.
 - Fixed export permission errors by staging captures in app-owned storage before publishing them to Downloads.
 - Verified bidirectional live btsnoop_net capture on Samsung Android 14.
@@ -33,12 +33,12 @@
 - Recovered complete records from interrupted active stream files after service recreation.
 - Reconciled interrupted captures after the app or UserService is recreated.
 - Preserved one-time conversion for legacy timestamp-named pending captures.
-- Made stop and export operations safe against stale or duplicate capture actions.
+- Made stop and finalization operations safe against stale or duplicate capture actions.
 - Made capture-start responses versioned and machine-readable.
 - Refused capture startup when staging storage is unavailable or too low.
 - Persisted live packet progress so capture state survives Activity recreation.
-- Re-enabled Stop & export for every new capture session.
-- Prevented duplicate exports from losing the staged PCAPNG and made generated filenames capture-unique.
+- Re-enabled Stop & finalize for every new capture session.
+- Prevented duplicate finalizations from losing the PCAPNG and made generated filenames capture-unique.
 - Derived the capture staging package path from the application ID.
 - Aligned capture staging with Android’s resolved external-storage path.
 - Rebuilt the active capture screen from authoritative UserService state after process recreation.
