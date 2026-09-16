@@ -32,6 +32,10 @@ class CaptureUserService : ICaptureUserService.Stub() {
     private var lastExportSummary = ""
     @Volatile private var exportProgress = "Ready"
 
+    init {
+        recoverInterruptedParts()
+    }
+
     @Keep
     fun destroy() {
         abortCapture()
@@ -238,6 +242,29 @@ class CaptureUserService : ICaptureUserService.Stub() {
     private fun captureDirectory() = File(
         "/sdcard/Android/data/net.duhowpi.nobita/files/BluetoothCaptures",
     ).apply { mkdirs() }
+
+    private fun recoverInterruptedParts() {
+        captureDirectory().listFiles { file ->
+            file.name.matches(Regex("\\.active-[0-9a-f]{32}\\.btsnoop\\.part"))
+        }?.forEach { raw ->
+            runCatching {
+                val recovery = BtsnoopFileRecovery.truncateToCompleteRecords(raw)
+                if (recovery.malformedRecord && recovery.completeLength < raw.length()) {
+                    java.io.RandomAccessFile(raw, "rw").use { it.setLength(recovery.completeLength) }
+                }
+                if (recovery.records == 0L) {
+                    raw.delete()
+                    return@runCatching
+                }
+                val id = raw.name.removePrefix(".active-").removeSuffix(".btsnoop.part")
+                val pending = File(captureDirectory(), ".pending-$id.btsnoop")
+                if (!raw.renameTo(pending)) {
+                    raw.copyTo(pending, overwrite = true)
+                    raw.delete()
+                }
+            }
+        }
+    }
 
     private fun captureStatusJson(state: String, bytes: Long, lastDataAt: Long, reason: String?): String = JSONObject()
         .put("version", 1)
