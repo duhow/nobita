@@ -1,1 +1,1 @@
-Nobita is an Android application for recording Bluetooth communication directly from your Android device using Shizuku. Bluetooth capture functionality is under active development.
+Nobita records Bluetooth communication directly from your Android device using Shizuku and Android's local btsnoop_net stream. Select a folder during onboarding; temporary and final Wireshark-compatible capture files remain there. Bluetooth HCI snoop logging and its local socket must be enabled in Developer options. Captures are processed on-device and never uploaded.

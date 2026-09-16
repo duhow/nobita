@@ -17,7 +17,7 @@ data class CaptureSession(
 ) {
     fun state(): CaptureState = when (stage) {
         CaptureStage.CAPTURING -> CaptureState.Capturing(startedAt, target)
-        CaptureStage.EXPORTING -> CaptureState.Finalizing
+        CaptureStage.EXPORTING -> CaptureState.FinalizingRaw
         CaptureStage.EXPORT_PENDING -> CaptureState.ExportPending
     }
 
