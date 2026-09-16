@@ -61,6 +61,7 @@ class CaptureForegroundService : Service() {
             exportStarted = true
         }
         val session = CaptureSession.load(this) ?: run { stopSelf(); return }
+        session.copy(stage = CaptureStage.EXPORTING).save(this)
         val target = session.target
         if (!Shizuku.pingBinder()) { stopSelf(); return }
         val wakeLock = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Nobita:export").apply { setReferenceCounted(false); acquire(30 * 60 * 1000L) }
@@ -75,7 +76,7 @@ class CaptureForegroundService : Service() {
                         success = true
                         updateNotification("${service.getLastExportSummary()} — exported to Downloads/BluetoothCaptures")
                     } catch (error: Exception) {
-                        CaptureSession.load(this@CaptureForegroundService)?.copy(exportPending = true)?.save(this@CaptureForegroundService)
+                        CaptureSession.load(this@CaptureForegroundService)?.copy(exportPending = true, stage = CaptureStage.EXPORT_PENDING)?.save(this@CaptureForegroundService)
                         updateNotification("Capture export failed: ${error.message ?: "unknown error"}")
                     }
                     finally {
