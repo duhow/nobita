@@ -11,7 +11,9 @@ class ConnectionTracker {
         val packet = record.packet
         if (packet.isEmpty()) return null
         if (packet[0].toInt() and 0xff == 0x04) parseEvent(packet)
-        if (packet[0].toInt() and 0xff == 0x02) return connections[readLe16(packet, 1) and 0x0fff]
+        when (packet[0].toInt() and 0xff) {
+            0x02, 0x03, 0x05 -> if (packet.size >= 3) return connections[readLe16(packet, 1) and 0x0fff]
+        }
         return null
     }
     private fun parseEvent(packet: ByteArray) {
