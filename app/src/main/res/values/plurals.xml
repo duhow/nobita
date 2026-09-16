@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <plurals name="nearby_devices_found">
         <item quantity="one">%d nearby device found</item>
         <item quantity="other">%d nearby devices found</item>

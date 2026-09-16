@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="app_name">Nobita</string>
     <string name="app_description">Bluetooth HCI capture reads all traffic from this phone’s local btsnoop_net endpoint (127.0.0.1:8872). The selected-device filter is applied only when finalizing.</string>
     <string name="capture_target_hint">Target MAC or name (optional)</string>
