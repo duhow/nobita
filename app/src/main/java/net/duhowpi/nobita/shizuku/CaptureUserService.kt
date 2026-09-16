@@ -32,7 +32,9 @@ class CaptureUserService : ICaptureUserService.Stub() {
         bluetoothInitiallyEnabled = command("settings", "get", "global", "bluetooth_on").trim() == "1"
         command("setprop", "persist.bluetooth.btsnooplogmode", "full")
         check(command("getprop", "persist.bluetooth.btsnooplogmode").trim() == "full") { "Bluetooth snoop mode was rejected" }
-        if (bluetoothInitiallyEnabled) restartBluetooth()
+        // The stack must be restarted for the new snoop mode to take effect. If Bluetooth
+        // was initially off, restoreCaptureEnvironment turns it off again after export.
+        restartBluetooth()
         return "uid=${Process.myUid()} mode=full previous=$previousMode initialBluetooth=$bluetoothInitiallyEnabled"
     }
 
@@ -117,7 +119,10 @@ class CaptureUserService : ICaptureUserService.Stub() {
 
     override fun restoreCaptureEnvironment(previousMode: String, bluetoothInitiallyEnabled: Boolean) {
         command("setprop", "persist.bluetooth.btsnooplogmode", previousMode)
-        if (bluetoothInitiallyEnabled) restartBluetooth() else command("cmd", "bluetooth_manager", "disable")
+        if (bluetoothInitiallyEnabled) restartBluetooth() else {
+            command("cmd", "bluetooth_manager", "disable")
+            command("cmd", "bluetooth_manager", "wait-for-state:STATE_OFF")
+        }
     }
 
     override fun abortCapture() {
