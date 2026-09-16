@@ -50,8 +50,9 @@ class BtsnoopNetTest {
                 ready.countDown()
                 it.accept().use { client ->
                     client.getOutputStream().use { stream ->
-                        val record = record(flags = 1, packet = byteArrayOf(0x04, 0x0e, 0x00))
-                        val bytes = header() + record
+                        val hostToController = record(flags = 0, packet = byteArrayOf(0x01, 0x01, 0x00))
+                        val controllerToHost = record(flags = 1, packet = byteArrayOf(0x04, 0x0e, 0x00))
+                        val bytes = header() + hostToController + controllerToHost
                         bytes.forEach { byte -> stream.write(byte.toInt()); stream.flush() }
                         Thread.sleep(100)
                     }
@@ -69,9 +70,10 @@ class BtsnoopNetTest {
         assertEquals(firstStop.terminalReason, secondStop.terminalReason)
 
         val records = BtsnoopReader.read(output.inputStream()).toList()
-        assertEquals(1, records.size)
-        assertEquals(true, records.single().controllerToHost)
-        assertEquals(24L + 3L, BtsnoopFileRecovery.inspect(output).completeLength - BtsnoopFormat.HEADER_LENGTH)
+        assertEquals(2, records.size)
+        assertEquals(false, records[0].controllerToHost)
+        assertEquals(true, records[1].controllerToHost)
+        assertEquals((24L + 3L) * 2, BtsnoopFileRecovery.inspect(output).completeLength - BtsnoopFormat.HEADER_LENGTH)
         output.delete()
     }
 
