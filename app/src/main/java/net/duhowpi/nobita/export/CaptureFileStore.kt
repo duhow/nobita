@@ -11,7 +11,11 @@ import java.io.File
 
 object CaptureFileStore {
     fun importPcapng(context: Context, path: String): Uri {
-        val source = File(path)
+        val stagingRoot = File(requireNotNull(context.getExternalFilesDir(null)), "BluetoothCaptures").canonicalFile
+        val source = File(path).canonicalFile
+        require(source.parentFile == stagingRoot && source.name.endsWith(".pcapng")) {
+            "Exported capture is outside Nobita staging"
+        }
         require(source.isFile) { "Exported capture does not exist: $path" }
         if (Build.VERSION.SDK_INT < 29) return FileProvider.getUriForFile(context, "${context.packageName}.files", source)
         val values = ContentValues().apply {
