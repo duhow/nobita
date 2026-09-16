@@ -20,6 +20,11 @@ class CaptureUserService : ICaptureUserService.Stub() {
     private var previousMode: String? = null
     private var bluetoothInitiallyEnabled = false
 
+    @Keep
+    fun destroy() {
+        System.exit(0)
+    }
+
     override fun prepareCapture(): String {
         check(Process.myUid() == 2000 || Process.myUid() == 0) { "Unexpected UserService UID: ${Process.myUid()}" }
         previousMode = command("getprop", "persist.bluetooth.btsnooplogmode").trim().ifEmpty { "disabled" }
