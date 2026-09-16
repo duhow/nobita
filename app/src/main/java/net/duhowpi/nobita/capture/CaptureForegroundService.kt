@@ -85,7 +85,7 @@ class CaptureForegroundService : Service() {
         }
     }
     private fun userServiceArgs() = Shizuku.UserServiceArgs(ComponentName(this, CaptureUserService::class.java))
-        .daemon(true).tag("bluetooth-capture").version(1).processNameSuffix("capture")
+        .daemon(true).tag("bluetooth-capture").version(USER_SERVICE_VERSION).processNameSuffix("capture")
     private fun updateNotification(text: String) {
         getSystemService(NotificationManager::class.java).notify(ID, NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth).setContentTitle(getString(R.string.capture_active))
@@ -103,5 +103,5 @@ class CaptureForegroundService : Service() {
         val seconds = ((System.currentTimeMillis() - session.startedAt) / 1000).coerceAtLeast(0)
         return "Target: $target • ${seconds / 60}m ${seconds % 60}s"
     }
-    companion object { private const val CHANNEL = "capture"; private const val ID = 42; const val ACTION_STOP = "net.duhowpi.nobita.STOP" }
+    companion object { private const val CHANNEL = "capture"; private const val ID = 42; private const val USER_SERVICE_VERSION = 2; const val ACTION_STOP = "net.duhowpi.nobita.STOP" }
 }

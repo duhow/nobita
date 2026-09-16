@@ -194,7 +194,7 @@ class MainActivity : AppCompatActivity() {
         error("Shizuku UserService is not connected")
     }
     private fun userServiceArgs() = Shizuku.UserServiceArgs(ComponentName(this, CaptureUserService::class.java))
-        .daemon(true).tag("bluetooth-capture").version(1).processNameSuffix("capture")
+        .daemon(true).tag("bluetooth-capture").version(USER_SERVICE_VERSION).processNameSuffix("capture")
     private fun requestNotifications() {
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf("android.permission.POST_NOTIFICATIONS"), 20)
@@ -253,5 +253,5 @@ class MainActivity : AppCompatActivity() {
         return try { block() } finally { if (lock.isHeld) lock.release() }
     }
 
-    companion object { private const val SHIZUKU_REQUEST = 100 }
+    companion object { private const val SHIZUKU_REQUEST = 100; private const val USER_SERVICE_VERSION = 2 }
 }
