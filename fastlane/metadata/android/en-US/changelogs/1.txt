@@ -17,3 +17,4 @@
 - Fixed failed exports getting stuck on an unavailable full-capture action.
 - Reconciled stale pending sessions when the app reconnects to Shizuku.
 - Refreshed capture controls when returning to the app after background export cleanup.
+- Preserved recoverable raw captures when the Shizuku service disconnects during export.
