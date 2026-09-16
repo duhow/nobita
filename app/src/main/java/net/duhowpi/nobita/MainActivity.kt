@@ -57,6 +57,10 @@ class MainActivity : AppCompatActivity() {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             userService = ICaptureUserService.Stub.asInterface(service)
             status.text = "Shizuku connected (uid checked on start)"
+            Thread {
+                val captureStatus = runCatching { userService?.getCaptureStatus() }.getOrNull()
+                if (captureStatus?.startsWith("CAPTURING") == true) runOnUiThread { status.text = "Capture active: $captureStatus" }
+            }.start()
             reconcilePendingSession()
         }
         override fun onServiceDisconnected(name: ComponentName?) { userService = null; status.text = getString(R.string.shizuku_not_ready) }

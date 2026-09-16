@@ -170,6 +170,18 @@ class CaptureUserService : ICaptureUserService.Stub() {
 
     override fun getLastExportSummary(): String = lastExportSummary
     override fun getExportProgress(): String = exportProgress
+    override fun getCaptureStatus(): String = synchronized(lifecycleLock) {
+        val active = client
+        when {
+            active != null -> {
+                val status = active.status()
+                "CAPTURING captureId=${captureId ?: "unknown"} bytes=${status.bytesReceived} lastDataAt=${status.lastDataAt}"
+            }
+            exportRunning -> "EXPORTING captureId=${captureId ?: "unknown"}"
+            completedExport != null -> "COMPLETED"
+            else -> "IDLE"
+        }
+    }
     override fun hasPendingCapture(): Boolean = captureDirectory()
         .listFiles { file -> file.name.startsWith(".pending-") && file.name.endsWith(".btsnoop") }
         ?.isNotEmpty() == true
