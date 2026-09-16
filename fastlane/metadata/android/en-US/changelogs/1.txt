@@ -19,3 +19,4 @@
 - Refreshed capture controls when returning to the app after background export cleanup.
 - Preserved recoverable raw captures when the Shizuku service disconnects during export.
 - Prevented duplicate export requests while a capture is being processed.
+- Fixed duplicate bugreport generation when exporting from the Activity and notification.

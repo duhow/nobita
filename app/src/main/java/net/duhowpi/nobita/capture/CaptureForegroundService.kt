@@ -24,6 +24,7 @@ class CaptureForegroundService : Service() {
         updateNotification(getString(R.string.capture_degraded))
     }
     @Volatile private var exportStarted = false
+    @Volatile private var exportInProgress = false
     private val notificationHandler = Handler(Looper.getMainLooper())
     private val notificationUpdater = object : Runnable {
         override fun run() {
@@ -41,7 +42,14 @@ class CaptureForegroundService : Service() {
         notificationHandler.postDelayed(notificationUpdater, 1_000)
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) startExport()
+        when (intent?.action) {
+            ACTION_STOP -> startExport()
+            ACTION_EXPORTING -> {
+                exportInProgress = true
+                notificationHandler.removeCallbacks(notificationUpdater)
+                updateNotification(getString(R.string.capture_exporting_top))
+            }
+        }
         return START_NOT_STICKY
     }
     override fun onBind(intent: Intent?): IBinder? = null
@@ -55,6 +63,7 @@ class CaptureForegroundService : Service() {
             if (exportStarted) return
             exportStarted = true
         }
+        exportInProgress = true
         notificationHandler.removeCallbacks(notificationUpdater)
         val session = CaptureSession.load(this) ?: run { stopSelf(); return }
         session.copy(stage = CaptureStage.EXPORTING).save(this)
@@ -103,7 +112,7 @@ class CaptureForegroundService : Service() {
         .daemon(true).tag("bluetooth-capture").version(USER_SERVICE_VERSION).processNameSuffix("capture")
     private fun updateNotification(text: String) {
         getSystemService(NotificationManager::class.java).notify(ID, NotificationCompat.Builder(this, CHANNEL)
-            .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth).setContentTitle(getString(R.string.capture_active))
+            .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth).setContentTitle(getString(if (exportInProgress) R.string.capture_exporting_top else R.string.capture_active))
             .setContentText(text).setOngoing(true).setContentIntent(PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)).build())
     }
     private fun notification() = NotificationCompat.Builder(this, CHANNEL)
@@ -111,12 +120,14 @@ class CaptureForegroundService : Service() {
         .setContentTitle(getString(R.string.capture_active))
         .setContentText(captureText()).setOngoing(true)
         .setContentIntent(PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT))
-        .addAction(0, getString(R.string.stop_export), PendingIntent.getService(this, 1, Intent(this, CaptureForegroundService::class.java).setAction(ACTION_STOP), PendingIntent.FLAG_IMMUTABLE)).build()
+        .apply {
+            if (!exportInProgress) addAction(0, getString(R.string.stop_export), PendingIntent.getService(this@CaptureForegroundService, 1, Intent(this@CaptureForegroundService, CaptureForegroundService::class.java).setAction(ACTION_STOP), PendingIntent.FLAG_IMMUTABLE))
+        }.build()
     private fun captureText(): String {
         val session = CaptureSession.load(this) ?: return getString(R.string.capture_notification_text)
         val target = session.target.ifBlank { "All devices" }
         val seconds = ((System.currentTimeMillis() - session.startedAt) / 1000).coerceAtLeast(0)
         return "Target: $target • ${seconds / 60}m ${seconds % 60}s"
     }
-    companion object { private const val CHANNEL = "capture"; private const val ID = 42; private const val USER_SERVICE_VERSION = 3; const val ACTION_STOP = "net.duhowpi.nobita.STOP" }
+    companion object { private const val CHANNEL = "capture"; private const val ID = 42; private const val USER_SERVICE_VERSION = 3; const val ACTION_STOP = "net.duhowpi.nobita.STOP"; const val ACTION_EXPORTING = "net.duhowpi.nobita.EXPORTING" }
 }

@@ -138,11 +138,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopAndExport() {
+        val currentSession = CaptureSession.load(this)
+        if (currentSession == null || currentSession.stage != CaptureStage.CAPTURING) return
         val target = findViewById<android.widget.EditText>(R.id.target).text.toString()
         val saveRaw = findViewById<android.widget.CheckBox>(R.id.save_raw).isChecked
         findViewById<Button>(R.id.stop_export).isEnabled = false
-        CaptureSession.load(this)?.copy(stage = CaptureStage.EXPORTING)?.save(this)
+        currentSession.copy(stage = CaptureStage.EXPORTING).save(this)
         showCaptureIdle(getString(R.string.capture_exporting_top))
+        status.text = getString(R.string.capture_exporting_top)
+        startService(Intent(this, CaptureForegroundService::class.java).setAction(CaptureForegroundService.ACTION_EXPORTING))
         Thread {
             try {
                 val session = CaptureSession.load(this) ?: error("No active capture session")
