@@ -29,6 +29,19 @@ class CaptureForegroundService : Service() {
         return START_NOT_STICKY
     }
     override fun onBind(intent: Intent?): IBinder? = null
+    override fun onDestroy() {
+        val session = CaptureSession.load(this)
+        if (session != null && Shizuku.pingBinder()) {
+            try { Shizuku.bindUserService(userServiceArgs(), object : ServiceConnection {
+                override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+                    try { ICaptureUserService.Stub.asInterface(binder).restoreCaptureEnvironment(session.previousMode, session.bluetoothInitiallyEnabled) }
+                    finally { Shizuku.unbindUserService(userServiceArgs(), this, true) }
+                }
+                override fun onServiceDisconnected(name: ComponentName?) = Unit
+            }) } catch (_: RuntimeException) { }
+        }
+        super.onDestroy()
+    }
     private fun startExport() {
         val session = CaptureSession.load(this) ?: run { stopSelf(); return }
         val target = session.target

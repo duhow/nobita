@@ -59,14 +59,18 @@ class CaptureUserService : ICaptureUserService.Stub() {
             return output.absolutePath
         } finally {
             raw.delete()
-            restoreCaptureEnvironment()
+            restoreCaptureEnvironment(previousMode, bluetoothInitiallyEnabled)
         }
     }
 
-    override fun restoreCaptureEnvironment() {
-        if (previousMode == null) return
-        previousMode?.let { command("setprop", "persist.bluetooth.btsnooplogmode", it) }
+    override fun restoreCaptureEnvironment(previousMode: String, bluetoothInitiallyEnabled: Boolean) {
+        command("setprop", "persist.bluetooth.btsnooplogmode", previousMode)
         if (bluetoothInitiallyEnabled) restartBluetooth() else command("cmd", "bluetooth_manager", "disable")
+    }
+
+    override fun abortCapture() {
+        val mode = previousMode ?: return
+        restoreCaptureEnvironment(mode, bluetoothInitiallyEnabled)
     }
 
     private fun restartBluetooth() {

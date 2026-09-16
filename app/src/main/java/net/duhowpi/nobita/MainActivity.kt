@@ -89,7 +89,7 @@ class MainActivity : AppCompatActivity() {
                     findViewById<Button>(R.id.stop_export).visibility = android.view.View.VISIBLE
                 }
             } catch (error: Exception) {
-                runCatching { userService?.restoreCaptureEnvironment() }
+                runCatching { userService?.abortCapture() }
                 runOnUiThread { CaptureSession.clear(this); status.text = error.message ?: "Capture preparation failed" }
             }
         }.start()
