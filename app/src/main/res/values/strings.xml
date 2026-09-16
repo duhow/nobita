@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">Nobita</string>
-    <string name="app_description">Bluetooth HCI capture records traffic from all Bluetooth connections on this phone. The selected-device filter is applied only when exporting.</string>
+    <string name="app_description">Bluetooth HCI capture reads all traffic from this phone’s local btsnoop_net endpoint (127.0.0.1:8872). The selected-device filter is applied only when exporting.</string>
     <string name="capture_target_hint">Target MAC or name (optional)</string>
     <string name="start_capture">Start capture</string>
     <string name="stop_export">Stop &amp; export</string>
@@ -30,7 +30,7 @@
     <string name="choose_recent">Choose recent target</string>
     <string name="no_recent_targets">No recent targets.</string>
     <string name="onboarding_title">Set up Nobita</string>
-    <string name="onboarding_description">Grant the required access before capturing Bluetooth traffic. Notifications and battery exemption are optional but recommended for reliable background capture. Exports are published to Downloads/BluetoothCaptures; no storage permission is required.</string>
+    <string name="onboarding_description">Grant the required access before capturing Bluetooth traffic. Enable Bluetooth HCI snoop logging and its socket in Developer options first. Nobita uses the local btsnoop_net endpoint; unsupported firmware cannot capture. Notifications and battery exemption are optional but recommended. Exports are published to Downloads/BluetoothCaptures; no storage permission is required.</string>
     <string name="onboarding_shizuku_title">Shizuku</string>
     <string name="onboarding_bluetooth_title">Nearby devices</string>
     <string name="onboarding_notifications_title">Notifications</string>
