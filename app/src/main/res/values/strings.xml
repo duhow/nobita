@@ -5,6 +5,10 @@
     <string name="start_capture">Start capture</string>
     <string name="stop_export">Stop &amp; export</string>
     <string name="capture_active">Bluetooth capture active</string>
+    <string name="capture_packets_pending">Packets processed: available after export</string>
+    <string name="capture_packets_count">Packets processed: %1$d</string>
+    <string name="capture_exporting_top">Exporting capture…</string>
+    <string name="capture_complete_top">Capture complete</string>
     <string name="capture_notification_text">All Bluetooth HCI traffic is being recorded locally.</string>
     <string name="capture_degraded">Capture degraded: Shizuku stopped. Bluetooth logging may still be active; open Shizuku before exporting.</string>
     <string name="shizuku_not_ready">Shizuku is not running or not authorized.</string>

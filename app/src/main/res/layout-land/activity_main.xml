@@ -6,11 +6,15 @@
     android:orientation="vertical"
     android:padding="24dp">
 
-    <TextView
+    <LinearLayout
+        android:id="@+id/capture_top_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/app_name"
-        android:textAppearance="?attr/textAppearanceHeadlineMedium" />
+        android:orientation="vertical"
+        android:padding="12dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/app_name" android:textAppearance="?attr/textAppearanceHeadlineMedium" />
+        <TextView android:id="@+id/capture_top_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/capture_packets_pending" />
+    </LinearLayout>
 
     <TextView
         android:layout_width="wrap_content"

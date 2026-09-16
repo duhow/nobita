@@ -12,6 +12,7 @@ import android.widget.TextView
 import android.widget.LinearLayout
 import android.net.Uri
 import android.os.PowerManager
+import android.util.TypedValue
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
@@ -41,6 +42,8 @@ class MainActivity : AppCompatActivity() {
     private var activeScan: Pair<BluetoothLeScanner, ScanCallback>? = null
     private var scanGeneration = 0
     private lateinit var status: TextView
+    private lateinit var captureTopBar: LinearLayout
+    private lateinit var captureTopStatus: TextView
     private val binderReceived = Shizuku.OnBinderReceivedListener { if (!isFinishing) bindUserService() }
     private val binderDead = Shizuku.OnBinderDeadListener { runOnUiThread { status.text = "Capture degraded: Shizuku stopped. Bluetooth logging may still be active; open Shizuku before exporting." } }
     private val permissionResult = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
@@ -61,6 +64,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         status = findViewById(R.id.status)
+        captureTopBar = findViewById(R.id.capture_top_bar)
+        captureTopStatus = findViewById(R.id.capture_top_status)
         requestNotifications()
         Shizuku.addBinderReceivedListener(binderReceived)
         Shizuku.addBinderDeadListener(binderDead)
@@ -78,6 +83,7 @@ class MainActivity : AppCompatActivity() {
             findViewById<android.widget.EditText>(R.id.target).setText(session.target)
             val pending = session.exportPending || session.state() is CaptureState.ExportPending
             status.text = if (pending) "Capture export pending: choose full export" else "Capture active (${elapsed(session.startedAt)})"
+            if (pending) showCaptureIdle(getString(R.string.capture_exporting_top)) else showCaptureActive()
             findViewById<Button>(R.id.start_capture).visibility = android.view.View.GONE
             findViewById<Button>(R.id.stop_export).visibility = if (pending) android.view.View.GONE else android.view.View.VISIBLE
             findViewById<Button>(R.id.export_full).visibility = if (pending) android.view.View.VISIBLE else android.view.View.GONE
@@ -113,6 +119,7 @@ class MainActivity : AppCompatActivity() {
                     TargetHistory.add(this, target)
                     CaptureSession(System.currentTimeMillis(), target, environment, previousDefaultMode, propertyModeChanged, initialBluetooth).save(this)
                     status.text = "Capture active: $result"
+                    showCaptureActive()
                     ContextCompat.startForegroundService(this, Intent(this, CaptureForegroundService::class.java))
                     findViewById<Button>(R.id.start_capture).visibility = android.view.View.GONE
                     findViewById<Button>(R.id.stop_export).visibility = android.view.View.VISIBLE
@@ -128,6 +135,7 @@ class MainActivity : AppCompatActivity() {
         val target = findViewById<android.widget.EditText>(R.id.target).text.toString()
         val saveRaw = findViewById<android.widget.CheckBox>(R.id.save_raw).isChecked
         CaptureSession.load(this)?.copy(stage = CaptureStage.EXPORTING)?.save(this)
+        showCaptureIdle(getString(R.string.capture_exporting_top))
         Thread {
             try {
                 val session = CaptureSession.load(this) ?: error("No active capture session")
@@ -138,11 +146,13 @@ class MainActivity : AppCompatActivity() {
                 val uri = CaptureFileStore.importPcapng(this, exported.first)
                 runOnUiThread {
                     CaptureSession.clear(this); exportedUri = uri
+                    showCaptureComplete(exported.second)
                     status.text = "Capture complete: ${exported.second}\nPCAPNG exported: ${exported.first}"; stopService(Intent(this, CaptureForegroundService::class.java)); resetButtons()
                     findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE
                 }
             } catch (error: Exception) {
                 runOnUiThread {
+                    showCaptureIdle(getString(R.string.capture_exporting_top))
                     status.text = error.message ?: "Export failed"
                     CaptureSession.load(this)?.copy(exportPending = true, stage = CaptureStage.EXPORT_PENDING)?.save(this)
                     findViewById<Button>(R.id.export_full).visibility = android.view.View.VISIBLE
@@ -163,7 +173,7 @@ class MainActivity : AppCompatActivity() {
                     service.exportFullCapture(session.previousMode, session.previousDefaultMode, session.propertyModeChanged, session.bluetoothInitiallyEnabled) to service.getLastExportSummary()
                 }
                 val uri = CaptureFileStore.importPcapng(this, exported.first)
-                runOnUiThread { CaptureSession.clear(this); exportedUri = uri; status.text = "Full capture complete: ${exported.second}"; findViewById<Button>(R.id.export_full).visibility = android.view.View.GONE; findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE; resetButtons() }
+                runOnUiThread { CaptureSession.clear(this); exportedUri = uri; showCaptureComplete(exported.second); status.text = "Full capture complete: ${exported.second}"; findViewById<Button>(R.id.export_full).visibility = android.view.View.GONE; findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE; resetButtons() }
             } catch (error: Exception) { runOnUiThread { status.text = error.message ?: "Full export failed" } }
         }.start()
     }
@@ -171,6 +181,23 @@ class MainActivity : AppCompatActivity() {
     private fun resetButtons() {
         findViewById<Button>(R.id.start_capture).visibility = android.view.View.VISIBLE
         findViewById<Button>(R.id.stop_export).visibility = android.view.View.GONE
+    }
+    private fun showCaptureActive() {
+        captureTopBar.setBackgroundColor(ContextCompat.getColor(this, R.color.capture_active_blue))
+        captureTopStatus.setTextColor(android.graphics.Color.WHITE)
+        captureTopStatus.text = getString(R.string.capture_packets_pending)
+    }
+    private fun showCaptureIdle(message: String) {
+        captureTopBar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+        val color = TypedValue()
+        theme.resolveAttribute(android.R.attr.textColorPrimary, color, true)
+        if (color.resourceId != 0) ContextCompat.getColorStateList(this, color.resourceId)?.let { captureTopStatus.setTextColor(it) }
+        else captureTopStatus.setTextColor(color.data)
+        captureTopStatus.text = message
+    }
+    private fun showCaptureComplete(summary: String) {
+        val packets = Regex("packets: (\\d+)").find(summary)?.groupValues?.get(1)?.toIntOrNull()
+        showCaptureIdle(getString(R.string.capture_complete_top) + if (packets != null) " — " + getString(R.string.capture_packets_count, packets) else "")
     }
     private fun openOrShare(share: Boolean) {
         val uri = exportedUri ?: return
