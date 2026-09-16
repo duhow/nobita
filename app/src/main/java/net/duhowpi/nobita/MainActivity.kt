@@ -370,7 +370,7 @@ class MainActivity : AppCompatActivity() {
     private fun openOrShare(share: Boolean) {
         val uri = exportedUri ?: return
         val intent = if (share) Intent(Intent.ACTION_SEND).apply { type = "application/vnd.tcpdump.pcap"; putExtra(Intent.EXTRA_STREAM, uri) }
-            else Intent(Intent.ACTION_VIEW).apply { type = "application/vnd.tcpdump.pcap"; setData(uri) }
+            else Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.tcpdump.pcap")
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         startActivity(Intent.createChooser(intent, if (share) getString(R.string.share_capture) else getString(R.string.open_capture)))
     }
