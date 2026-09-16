@@ -112,10 +112,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopAndExport() {
+        val target = findViewById<android.widget.EditText>(R.id.target).text.toString()
+        val saveRaw = findViewById<android.widget.CheckBox>(R.id.save_raw).isChecked
         Thread {
             try {
-                val target = findViewById<android.widget.EditText>(R.id.target).text.toString()
-                val saveRaw = findViewById<android.widget.CheckBox>(R.id.save_raw).isChecked
                 val session = CaptureSession.load(this) ?: error("No active capture session")
                 val path = withWakeLock { requireUserService().exportPcapng(target, saveRaw, session.previousMode, session.bluetoothInitiallyEnabled) }
                 val uri = CaptureFileStore.importPcapng(this, path)
@@ -124,7 +124,15 @@ class MainActivity : AppCompatActivity() {
                     status.text = "PCAPNG exported: $path"; stopService(Intent(this, CaptureForegroundService::class.java)); resetButtons()
                     findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE
                 }
-            } catch (error: Exception) { runOnUiThread { status.text = error.message ?: "Export failed"; findViewById<Button>(R.id.export_full).visibility = android.view.View.VISIBLE; stopService(Intent(this, CaptureForegroundService::class.java)); resetButtons() } }
+            } catch (error: Exception) {
+                runOnUiThread {
+                    status.text = error.message ?: "Export failed"
+                    findViewById<Button>(R.id.export_full).visibility = android.view.View.VISIBLE
+                    findViewById<Button>(R.id.start_capture).visibility = android.view.View.GONE
+                    findViewById<Button>(R.id.stop_export).visibility = android.view.View.GONE
+                    stopService(Intent(this, CaptureForegroundService::class.java))
+                }
+            }
         }.start()
     }
 
