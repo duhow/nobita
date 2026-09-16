@@ -27,7 +27,7 @@
     <string name="choose_recent">Choose recent target</string>
     <string name="no_recent_targets">No recent targets.</string>
     <string name="onboarding_title">Set up Nobita</string>
-    <string name="onboarding_description">Grant the required access before capturing Bluetooth traffic. Notifications and battery exemption are optional but recommended for reliable background capture.</string>
+    <string name="onboarding_description">Grant the required access before capturing Bluetooth traffic. Notifications and battery exemption are optional but recommended for reliable background capture. Exports are published to Downloads/BluetoothCaptures; no storage permission is required.</string>
     <string name="onboarding_shizuku_title">Shizuku</string>
     <string name="onboarding_bluetooth_title">Nearby devices</string>
     <string name="onboarding_notifications_title">Notifications</string>

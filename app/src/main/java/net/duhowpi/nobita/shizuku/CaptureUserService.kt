@@ -150,7 +150,9 @@ class CaptureUserService : ICaptureUserService.Stub() {
         .listFiles { file -> file.name.startsWith(".pending-") && file.name.endsWith(".btsnoop") }
         ?.isNotEmpty() == true
 
-    private fun captureDirectory() = File("/sdcard/Download/BluetoothCaptures").apply { mkdirs() }
+    private fun captureDirectory() = File(
+        "/sdcard/Android/data/net.duhowpi.nobita/files/BluetoothCaptures",
+    ).apply { mkdirs() }
     private fun cleanupPendingCaptures() {
         captureDirectory().listFiles { file -> file.name.startsWith(".pending-") && file.name.endsWith(".btsnoop") }
             ?.forEach { it.delete() }
