@@ -80,11 +80,9 @@ class OnboardingActivity : AppCompatActivity() {
 
     private fun requestShizuku() {
         if (!Shizuku.pingBinder()) {
-            try {
-                startActivity(Intent("moe.shizuku.manager.action.MAIN_SETTINGS"))
-            } catch (_: ActivityNotFoundException) {
-                shizukuStatus.text = getString(R.string.onboarding_shizuku_missing)
-            }
+            val intent = packageManager.getLaunchIntentForPackage(SHIZUKU_PACKAGE)
+            if (intent == null) shizukuStatus.text = getString(R.string.onboarding_shizuku_missing)
+            else startActivity(intent)
             return
         }
         if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) Shizuku.requestPermission(SHIZUKU_REQUEST)
@@ -135,6 +133,7 @@ class OnboardingActivity : AppCompatActivity() {
         private const val SHIZUKU_REQUEST = 100
         private const val BLUETOOTH_REQUEST = 101
         private const val NOTIFICATION_REQUEST = 102
+        private const val SHIZUKU_PACKAGE = "moe.shizuku.privileged.api"
         private val BLUETOOTH_PERMISSIONS = arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
     }
 }
