@@ -44,9 +44,9 @@ class ConnectionTracker {
         val dataLength = packet[13].toInt() and 0xff
         val end = (14 + dataLength).coerceAtMost(packet.size)
         var offset = 14
-        while (offset + 2 <= end) {
+        while (offset + 1 < end) {
             val length = packet[offset].toInt() and 0xff
-            if (length == 0 || offset + length >= end) break
+            if (length == 0 || offset + 1 + length > end) break
             val type = packet[offset + 1].toInt() and 0xff
             if (type == 0x08 || type == 0x09) names[address] = packet.copyOfRange(offset + 2, offset + 1 + length).toString(Charsets.UTF_8)
             offset += length + 1
