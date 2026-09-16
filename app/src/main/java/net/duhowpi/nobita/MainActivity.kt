@@ -61,7 +61,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        if (userService != null) Shizuku.unbindUserService(userServiceArgs(), connection, true)
+        if (userService != null) Shizuku.unbindUserService(userServiceArgs(), connection, false)
         super.onDestroy()
     }
 

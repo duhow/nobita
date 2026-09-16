@@ -45,7 +45,10 @@ class CaptureForegroundService : Service() {
                     }
                 }.start()
             }
-            override fun onServiceDisconnected(name: ComponentName?) { stopSelf() }
+            override fun onServiceDisconnected(name: ComponentName?) {
+                if (wakeLock.isHeld) wakeLock.release()
+                stopSelf()
+            }
         }) } catch (error: RuntimeException) {
             if (wakeLock.isHeld) wakeLock.release()
             stopSelf()
