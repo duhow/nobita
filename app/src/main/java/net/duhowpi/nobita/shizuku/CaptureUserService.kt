@@ -38,13 +38,16 @@ class CaptureUserService : ICaptureUserService.Stub() {
             ?: error(lines.lastOrNull { it.startsWith("FAIL:") } ?: "bugreportz did not complete")
         val raw = File.createTempFile("nobita-", ".btsnoop", File("/data/local/tmp"))
         try {
-            ZipFile(path).use { zip ->
-                val entry = zip.entries().asSequence().filter { !it.isDirectory }
-                    .map { it to score(it.name) }.filter { it.second > 0 }
-                    .maxByOrNull { it.second }?.first ?: error("No BTSnoop file found")
-                zip.getInputStream(entry).use { input -> raw.outputStream().use { input.copyTo(it) } }
+            try {
+                ZipFile(path).use { zip ->
+                    val entry = zip.entries().asSequence().filter { !it.isDirectory }
+                        .map { it to score(it.name) }.filter { it.second > 0 }
+                        .maxByOrNull { it.second }?.first ?: error("No BTSnoop file found")
+                    zip.getInputStream(entry).use { input -> raw.outputStream().use { input.copyTo(it) } }
+                }
+            } finally {
+                File(path).delete()
             }
-            File(path).delete()
             val directory = File("/sdcard/Download/BluetoothCaptures").apply { mkdirs() }
             val base = (target.ifBlank { "Bluetooth" }).replace(Regex("[^A-Za-z0-9._-]"), "_").take(48)
             val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
