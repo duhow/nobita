@@ -114,17 +114,14 @@ class MainActivity : AppCompatActivity() {
         if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
             Shizuku.requestPermission(SHIZUKU_REQUEST); return
         }
+        val target = findViewById<android.widget.EditText>(R.id.target).text.toString()
+        val saveRaw = findViewById<android.widget.CheckBox>(R.id.save_raw).isChecked
         Thread {
             try {
-                val result = withWakeLock { requireUserService().prepareCapture() }
+                val result = withWakeLock { requireUserService().startCapture(target, saveRaw) }
                 runOnUiThread {
-                    val environment = result.substringAfter("previous=", "disabled").substringBefore(" defaultMode=")
-                    val previousDefaultMode = result.substringAfter("defaultMode=", "null").substringBefore(" propertyChanged=")
-                    val propertyModeChanged = result.substringAfter("propertyChanged=", "true").substringBefore(" initialBluetooth=").toBoolean()
-                    val initialBluetooth = result.substringAfter("initialBluetooth=", "true").toBoolean()
-                    val target = findViewById<android.widget.EditText>(R.id.target).text.toString()
                     TargetHistory.add(this, target)
-                    CaptureSession(System.currentTimeMillis(), target, environment, previousDefaultMode, propertyModeChanged, initialBluetooth).save(this)
+                    CaptureSession(System.currentTimeMillis(), target, captureId(result), saveRaw = saveRaw).save(this)
                     status.text = "Capture active: $result"
                     showCaptureActive()
                     ContextCompat.startForegroundService(this, Intent(this, CaptureForegroundService::class.java))
@@ -162,7 +159,7 @@ class MainActivity : AppCompatActivity() {
                     }
                     progress.start()
                     try {
-                        service.exportPcapng(target, saveRaw, session.previousMode, session.previousDefaultMode, session.propertyModeChanged, session.bluetoothInitiallyEnabled) to service.getLastExportSummary()
+                    service.stopAndExport() to service.getLastExportSummary()
                     } finally {
                         finished.set(true)
                         progress.interrupt()
@@ -212,7 +209,7 @@ class MainActivity : AppCompatActivity() {
                     }
                     progress.start()
                     try {
-                        service.exportFullCapture(session.previousMode, session.previousDefaultMode, session.propertyModeChanged, session.bluetoothInitiallyEnabled) to service.getLastExportSummary()
+                        service.exportFullCapture() to service.getLastExportSummary()
                     } finally {
                         finished.set(true)
                         progress.interrupt()
@@ -421,5 +418,7 @@ class MainActivity : AppCompatActivity() {
         return try { block() } finally { if (lock.isHeld) lock.release() }
     }
 
-    companion object { private const val SHIZUKU_REQUEST = 100; private const val USER_SERVICE_VERSION = 4 }
+    private fun captureId(result: String): String = result.substringAfter("captureId=", "").substringBefore(' ')
+
+    companion object { private const val SHIZUKU_REQUEST = 100; private const val USER_SERVICE_VERSION = 5 }
 }

@@ -7,10 +7,9 @@ enum class CaptureStage { CAPTURING, EXPORTING, EXPORT_PENDING }
 data class CaptureSession(
     val startedAt: Long,
     val target: String,
-    val previousMode: String = "disabled",
-    val previousDefaultMode: String = "null",
-    val propertyModeChanged: Boolean = true,
-    val bluetoothInitiallyEnabled: Boolean = true,
+    val captureId: String = "",
+    val saveRaw: Boolean = false,
+    val source: String = "btsnoop_net",
     val exportPending: Boolean = false,
     val stage: CaptureStage = CaptureStage.CAPTURING,
 ) {
@@ -21,32 +20,28 @@ data class CaptureSession(
     }
 
     fun save(context: Context) = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit()
-        .putLong(KEY_STARTED, startedAt).putString(KEY_TARGET, target).putString(KEY_MODE, previousMode)
-        .putString(KEY_DEFAULT_MODE, previousDefaultMode).putBoolean(KEY_PROPERTY_CHANGED, propertyModeChanged)
-        .putBoolean(KEY_BLUETOOTH, bluetoothInitiallyEnabled)
-        .putBoolean(KEY_EXPORT_PENDING, exportPending)
-        .putString(KEY_STAGE, stage.name)
-        .apply()
+        .putLong(KEY_STARTED, startedAt).putString(KEY_TARGET, target).putString(KEY_CAPTURE_ID, captureId)
+        .putBoolean(KEY_SAVE_RAW, saveRaw).putString(KEY_SOURCE, source)
+        .putBoolean(KEY_EXPORT_PENDING, exportPending).putString(KEY_STAGE, stage.name).apply()
 
     companion object {
         private const val PREFERENCES = "capture_session"
         private const val KEY_STARTED = "started_at"
         private const val KEY_TARGET = "target"
-        private const val KEY_MODE = "mode"
-        private const val KEY_DEFAULT_MODE = "default_mode"
-        private const val KEY_PROPERTY_CHANGED = "property_mode_changed"
-        private const val KEY_BLUETOOTH = "bluetooth_initially_enabled"
+        private const val KEY_CAPTURE_ID = "capture_id"
+        private const val KEY_SAVE_RAW = "save_raw"
+        private const val KEY_SOURCE = "source"
         private const val KEY_EXPORT_PENDING = "export_pending"
         private const val KEY_STAGE = "stage"
         fun load(context: Context): CaptureSession? {
             val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
             val startedAt = preferences.getLong(KEY_STARTED, 0)
             return if (startedAt == 0L) null else CaptureSession(
-                startedAt, preferences.getString(KEY_TARGET, "") ?: "",
-                preferences.getString(KEY_MODE, "disabled") ?: "disabled",
-                preferences.getString(KEY_DEFAULT_MODE, "null") ?: "null",
-                preferences.getBoolean(KEY_PROPERTY_CHANGED, true),
-                preferences.getBoolean(KEY_BLUETOOTH, true),
+                startedAt,
+                preferences.getString(KEY_TARGET, "") ?: "",
+                preferences.getString(KEY_CAPTURE_ID, "") ?: "",
+                preferences.getBoolean(KEY_SAVE_RAW, false),
+                preferences.getString(KEY_SOURCE, "btsnoop_net") ?: "btsnoop_net",
                 preferences.getBoolean(KEY_EXPORT_PENDING, false),
                 runCatching { CaptureStage.valueOf(preferences.getString(KEY_STAGE, CaptureStage.CAPTURING.name)!!) }
                     .getOrDefault(CaptureStage.CAPTURING),

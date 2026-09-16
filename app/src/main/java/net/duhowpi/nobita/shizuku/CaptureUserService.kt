@@ -24,12 +24,10 @@ class CaptureUserService : ICaptureUserService.Stub() {
     private var client: BtsnoopNetClient? = null
     private var captureId: String? = null
     private var activeRaw: File? = null
+    private var target = ""
+    private var saveRaw = false
     private var exportRunning = false
     private var completedExport: String? = null
-    private var previousMode: String? = null
-    private var previousDefaultMode: String? = null
-    private var propertyModeChanged = false
-    private var bluetoothInitiallyEnabled = false
     private var lastExportSummary = ""
     @Volatile private var exportProgress = "Ready"
 
@@ -39,7 +37,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
         System.exit(0)
     }
 
-    override fun prepareCapture(): String {
+    override fun startCapture(target: String, saveRaw: Boolean): String {
         check(Process.myUid() == 2000 || Process.myUid() == 0) { "Unexpected UserService UID: ${Process.myUid()}" }
         synchronized(lifecycleLock) {
             check(client == null && !exportRunning) { "A Bluetooth capture is already active" }
@@ -54,15 +52,15 @@ class CaptureUserService : ICaptureUserService.Stub() {
             client = newClient
             captureId = id
             activeRaw = raw
-            previousMode = mode
-            previousDefaultMode = "null"
-            propertyModeChanged = false
-            bluetoothInitiallyEnabled = true
-            return "uid=${Process.myUid()} mode=$mode previous=$mode defaultMode=null propertyChanged=false initialBluetooth=true source=btsnoop_net captureId=$id"
+            this.target = target
+            this.saveRaw = saveRaw
+            return "uid=${Process.myUid()} mode=$mode source=btsnoop_net captureId=$id"
         }
     }
 
-    override fun exportPcapng(target: String, saveRaw: Boolean, previousMode: String, previousDefaultMode: String, propertyModeChanged: Boolean, bluetoothInitiallyEnabled: Boolean): String {
+    override fun stopAndExport(): String {
+        val captureTarget: String
+        val captureSaveRaw: Boolean
         val raw: File
         val id: String
         synchronized(lifecycleLock) {
@@ -78,6 +76,8 @@ class CaptureUserService : ICaptureUserService.Stub() {
             activeClient.stop()
             raw = activeRaw ?: error("No active capture file")
             id = captureId ?: error("No active capture ID")
+            captureTarget = target
+            captureSaveRaw = saveRaw
             client = null
             activeRaw = null
             captureId = null
@@ -94,7 +94,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
                 raw.copyTo(finalized, overwrite = true)
                 raw.delete()
             }
-            result = convertRaw(finalized, id, target, saveRaw, recovery.truncatedTail, "btsnoop_net")
+            result = convertRaw(finalized, id, captureTarget, captureSaveRaw, recovery.truncatedTail, "btsnoop_net")
             return result
         } finally {
             synchronized(lifecycleLock) {
@@ -141,7 +141,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
         }
     }
 
-    override fun exportFullCapture(previousMode: String, previousDefaultMode: String, propertyModeChanged: Boolean, bluetoothInitiallyEnabled: Boolean): String {
+    override fun exportFullCapture(): String {
         exportProgress = "Converting full capture…"
         val raw = captureDirectory().listFiles { file -> file.name.startsWith(".pending-") && file.name.endsWith(".btsnoop") }
             ?.maxByOrNull { it.lastModified() } ?: error("No pending raw capture is available")
@@ -174,10 +174,6 @@ class CaptureUserService : ICaptureUserService.Stub() {
         .listFiles { file -> file.name.startsWith(".pending-") && file.name.endsWith(".btsnoop") }
         ?.isNotEmpty() == true
 
-    override fun restoreCaptureEnvironment(previousMode: String, previousDefaultMode: String, propertyModeChanged: Boolean, bluetoothInitiallyEnabled: Boolean) {
-        // btsnoop_net uses the user's existing Bluetooth developer setting. Never change it here.
-    }
-
     override fun abortCapture() {
         synchronized(lifecycleLock) {
             client?.stop()
@@ -185,6 +181,8 @@ class CaptureUserService : ICaptureUserService.Stub() {
             activeRaw?.delete()
             activeRaw = null
             captureId = null
+            target = ""
+            saveRaw = false
             lifecycleLock.notifyAll()
         }
     }

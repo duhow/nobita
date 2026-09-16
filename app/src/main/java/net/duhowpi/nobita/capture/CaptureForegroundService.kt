@@ -88,7 +88,7 @@ class CaptureForegroundService : Service() {
                         }
                         progress.start()
                         val path = try {
-                            boundService.exportPcapng(target, false, session.previousMode, session.previousDefaultMode, session.propertyModeChanged, session.bluetoothInitiallyEnabled)
+                            boundService.stopAndExport()
                         } finally {
                             exportCompleted.set(true)
                             progress.interrupt()
@@ -143,5 +143,5 @@ class CaptureForegroundService : Service() {
         val seconds = ((System.currentTimeMillis() - session.startedAt) / 1000).coerceAtLeast(0)
         return "Target: $target • ${seconds / 60}m ${seconds % 60}s"
     }
-    companion object { private const val CHANNEL = "capture"; private const val ID = 42; private const val USER_SERVICE_VERSION = 4; const val ACTION_STOP = "net.duhowpi.nobita.STOP"; const val ACTION_EXPORTING = "net.duhowpi.nobita.EXPORTING" }
+    companion object { private const val CHANNEL = "capture"; private const val ID = 42; private const val USER_SERVICE_VERSION = 5; const val ACTION_STOP = "net.duhowpi.nobita.STOP"; const val ACTION_EXPORTING = "net.duhowpi.nobita.EXPORTING" }
 }
