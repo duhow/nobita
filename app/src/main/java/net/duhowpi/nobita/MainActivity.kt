@@ -448,5 +448,5 @@ class MainActivity : AppCompatActivity() {
 
     private fun captureId(result: String): String = result.substringAfter("captureId=", "").substringBefore(' ')
 
-    companion object { private const val SHIZUKU_REQUEST = 100; private const val USER_SERVICE_VERSION = 5 }
+    companion object { private const val SHIZUKU_REQUEST = 100; private const val USER_SERVICE_VERSION = 6 }
 }
