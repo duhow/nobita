@@ -18,12 +18,13 @@ Nobita is an Android application for recording Bluetooth communication directly 
 
 1. Start Shizuku through ADB or Wireless Debugging and authorize Nobita.
 2. Select a paired/nearby device, or enter its MAC address or name.
-3. Tap **Start capture**, use the other Bluetooth application, then tap **Stop & export**.
-4. Nobita creates a Wireshark-compatible PCAPNG under `Download/BluetoothCaptures`.
+3. Choose a folder for capture files during onboarding.
+4. Tap **Start capture**, use the other Bluetooth application, then tap **Stop & finalize**.
+5. Nobita creates a Wireshark-compatible PCAPNG directly in the selected folder.
 
-The capture is a live, local stream from Android's `btsnoop_net` endpoint at `127.0.0.1:8872`. Enable both Bluetooth HCI snoop logging and its socket in Developer options before starting; Nobita does not change Bluetooth settings or restart the stack. Device filtering is applied only during export using Bluetooth connection handles; a raw BTSnoop copy can optionally be retained. Captures contain sensitive payloads and are never uploaded automatically.
+The capture is a live, local stream from Android's `btsnoop_net` endpoint at `127.0.0.1:8872`. Enable both Bluetooth HCI snoop logging and its socket in Developer options before starting; Nobita does not change Bluetooth settings or restart the stack. Device filtering is applied only during finalization using Bluetooth connection handles; a raw BTSnoop copy can optionally be retained. Temporary and final files remain in the selected folder. Captures contain sensitive payloads and are never uploaded automatically.
 
-The endpoint is firmware-dependent and supports one live client. Devices without a compatible listener are reported as unsupported before capture begins. The current implementation targets Android 12+ behavior and requires a working Shizuku UserService.
+The endpoint is firmware-dependent and supports one live client. Devices without a compatible listener are reported as unsupported before capture begins. Samsung Android 14 has been verified with bidirectional traffic; other firmware must be validated independently. The current implementation targets Android 12+ behavior and requires a working Shizuku UserService.
 
 ### Why Nobita?
 

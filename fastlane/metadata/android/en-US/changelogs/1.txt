@@ -19,13 +19,12 @@
 - Refreshed capture controls when returning to the app after background export cleanup.
 - Preserved recoverable raw captures when the Shizuku service disconnects during export.
 - Prevented duplicate export requests while a capture is being processed.
-- Fixed duplicate bugreport generation when exporting from the Activity and notification.
 - Fixed full capture export failures for controller-to-host packets.
 - Showed the processed packet count after full capture export.
 - Added visible export progress stages and clearer onboarding permission states.
 - Made onboarding permission checks visible in dark mode and fixed their title alignment.
 - Fixed export permission errors by staging captures in app-owned storage before publishing them to Downloads.
-- Switched capture acquisition from slow bugreport snapshots to live btsnoop_net streaming.
+- Verified bidirectional live btsnoop_net capture on Samsung Android 14.
 - Kept exports valid when Android BTSnoop records arrive slightly out of timestamp order.
 - Surface unexpected live stream interruptions and recoverable packet progress.
 - Bound full-capture recovery to the original capture session.

@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">Nobita</string>
-    <string name="app_description">Captura HCI de Bluetooth desde el endpoint btsnoop_net local del teléfono (127.0.0.1:8872). El filtro del dispositivo se aplica al exportar.</string>
+    <string name="app_description">Captura HCI de Bluetooth desde el endpoint btsnoop_net local del teléfono (127.0.0.1:8872). El filtro del dispositivo se aplica al finalizar.</string>
 </resources>
