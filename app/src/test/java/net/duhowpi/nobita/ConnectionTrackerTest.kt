@@ -5,6 +5,7 @@ import net.duhowpi.nobita.hci.ConnectionTracker
 import net.duhowpi.nobita.hci.PacketFilter
 import net.duhowpi.nobita.hci.DeviceTarget
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -21,6 +22,9 @@ class ConnectionTrackerTest {
         assertEquals("F1:E2:D3:C4:B5:A6", connection?.address)
         assertTrue(PacketFilter.matches(event, connection, "F1:E2"))
         assertTrue(DeviceTarget.fromQuery("F1:E2:D3:C4:B5:A6").matches(connection))
+        assertEquals("F1:E2:D3:C4:B5:A6", tracker.connectionFor(event)?.address)
+        tracker.connectionFor(BtsnoopRecord(4, 1, 3, byteArrayOf(0x04, 0x05, 0x04, 0, 0x42, 0)))
+        assertNull(tracker.connectionFor(BtsnoopRecord(3, 0, 4, byteArrayOf(0x02, 0x42, 0))))
     }
 
     @Test fun associatesClassicRemoteNameBeforeConnection() {
