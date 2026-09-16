@@ -31,7 +31,7 @@ object PcapngValidator {
                         val captured = readInt(payload, 12)
                         check(captured >= 4 && payload.size >= 20 + ((captured + 3) and -4)) { "Invalid packet length" }
                         val packet = payload.copyOfRange(20, 20 + captured)
-                        check(packet[0].toInt() == 0 || packet[0].toInt() == 1) { "Invalid Bluetooth direction" }
+                        check(readInt(packet, 0) == 0 || readInt(packet, 0) == 1) { "Invalid Bluetooth direction" }
                         check(packet.size > 4 && packet[4].toInt() and 0xff in 1..5) { "Invalid H4 packet type" }
                         packets++
                     }
