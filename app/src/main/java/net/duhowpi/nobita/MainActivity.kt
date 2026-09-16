@@ -159,7 +159,10 @@ class MainActivity : AppCompatActivity() {
                     showCaptureActive()
                     ContextCompat.startForegroundService(this, Intent(this, CaptureForegroundService::class.java))
                     findViewById<Button>(R.id.start_capture).visibility = android.view.View.GONE
-                    findViewById<Button>(R.id.stop_export).visibility = android.view.View.VISIBLE
+                    findViewById<Button>(R.id.stop_export).apply {
+                        visibility = android.view.View.VISIBLE
+                        isEnabled = true
+                    }
                     startCaptureStatusPolling()
                 }
             } catch (error: Exception) {
@@ -269,8 +272,14 @@ class MainActivity : AppCompatActivity() {
     private fun resetButtons() {
         captureStatusHandler.removeCallbacks(captureStatusUpdater)
         findViewById<Button>(R.id.start_capture).visibility = android.view.View.VISIBLE
-        findViewById<Button>(R.id.stop_export).visibility = android.view.View.GONE
-        findViewById<Button>(R.id.export_full).visibility = android.view.View.GONE
+        findViewById<Button>(R.id.stop_export).apply {
+            visibility = android.view.View.GONE
+            isEnabled = true
+        }
+        findViewById<Button>(R.id.export_full).apply {
+            visibility = android.view.View.GONE
+            isEnabled = true
+        }
     }
     private fun startCaptureStatusPolling() {
         captureStatusHandler.removeCallbacks(captureStatusUpdater)

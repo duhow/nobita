@@ -38,3 +38,5 @@
 - Made capture-start responses versioned and machine-readable.
 - Refused capture startup when staging storage is unavailable or too low.
 - Persisted live packet progress so capture state survives Activity recreation.
+- Re-enabled Stop & export for every new capture session.
+- Prevented duplicate exports from losing the staged PCAPNG and made generated filenames capture-unique.

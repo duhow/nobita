@@ -133,7 +133,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
         val directory = captureDirectory()
         val base = (target.ifBlank { "Bluetooth" }).replace(Regex("[^A-Za-z0-9._-]"), "_").take(48)
         val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-        val generated = File(directory, "${base}_$stamp.pcapng")
+        val generated = File(directory, "${base}_${id}_$stamp.pcapng")
         var converted = false
         try {
             var written = 0
@@ -158,7 +158,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
             if (target.isNotBlank() && written == 0) error("No packets matched target; raw capture preserved for full export")
             PcapngValidator.validate(generated)
             exportProgress = "Finishing export…"
-            if (saveRaw) raw.copyTo(File(directory, "${base}_$stamp.btsnoop"), overwrite = true)
+            if (saveRaw) raw.copyTo(File(directory, "${base}_${id}_$stamp.btsnoop"), overwrite = true)
             converted = true
             return generated.absolutePath
         } finally {
