@@ -19,23 +19,27 @@ class ConnectionTracker {
     private fun parseEvent(packet: ByteArray) {
         if (packet.size < 3) return
         when (packet[1].toInt() and 0xff) {
-            0x03 -> if (packet.size >= 11) {
-                val address = address(packet, 5)
-                connections[readLe16(packet, 3)] = Connection(readLe16(packet, 3), address, names[address])
+            0x03 -> if (packet.size >= 12) {
+                val address = address(packet, 6)
+                val handle = readLe16(packet, 4)
+                connections[handle] = Connection(handle, address, names[address])
             }
             0x07 -> if (packet.size >= 11) {
                 val address = address(packet, 4)
                 names[address] = packet.copyOfRange(10, packet.size).takeWhile { it.toInt() != 0 }.toByteArray().toString(Charsets.UTF_8)
             }
-            0x05 -> if (packet.size >= 5) connections.remove(readLe16(packet, 2) and 0x0fff)
-            0x3e -> if (packet.size >= 4 && ((packet[3].toInt() and 0xff == 0x01) || (packet[3].toInt() and 0xff == 0x0a))) {
-                val handleOffset = 4
-                val addressOffset = 8
-                if (packet.size >= addressOffset + 6) {
-                    val address = address(packet, addressOffset)
-                    connections[readLe16(packet, handleOffset)] = Connection(readLe16(packet, handleOffset), address, names[address])
+            0x05 -> if (packet.size >= 6) connections.remove(readLe16(packet, 4) and 0x0fff)
+            0x3e -> when (packet[3].toInt() and 0xff) {
+                0x01, 0x0a -> if (packet.size >= 15) {
+                    val handle = readLe16(packet, 5)
+                    val addressOffset = 9
+                    if (packet.size >= addressOffset + 6) {
+                        val address = address(packet, addressOffset)
+                        connections[handle] = Connection(handle, address, names[address])
+                    }
                 }
-            } else if (packet[3].toInt() and 0xff == 0x02) parseAdvertising(packet)
+                0x02 -> parseAdvertising(packet)
+            }
         }
     }
     private fun parseAdvertising(packet: ByteArray) {
