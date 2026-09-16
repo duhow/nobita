@@ -254,7 +254,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
     }
 
     private fun captureDirectory() = File(
-        "/sdcard/Android/data/net.duhowpi.nobita/files/BluetoothCaptures",
+        "/sdcard/Android/data/${net.duhowpi.nobita.BuildConfig.APPLICATION_ID}/files/BluetoothCaptures",
     ).apply { mkdirs() }
 
     private fun recoverInterruptedParts() {
