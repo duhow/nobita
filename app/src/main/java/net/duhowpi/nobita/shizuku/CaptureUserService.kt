@@ -77,6 +77,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
             return generated.absolutePath
         } finally {
             if (extracted && !converted) raw?.copyTo(File(captureDirectory(), ".pending-${System.currentTimeMillis()}.btsnoop"), overwrite = true)
+            if (converted) cleanupPendingCaptures()
             if (!converted) output?.delete()
             raw?.delete()
             bugreport?.delete()
@@ -105,6 +106,10 @@ class CaptureUserService : ICaptureUserService.Stub() {
     }
 
     private fun captureDirectory() = File("/sdcard/Download/BluetoothCaptures").apply { mkdirs() }
+    private fun cleanupPendingCaptures() {
+        captureDirectory().listFiles { file -> file.name.startsWith(".pending-") && file.name.endsWith(".btsnoop") }
+            ?.forEach { it.delete() }
+    }
 
     override fun restoreCaptureEnvironment(previousMode: String, bluetoothInitiallyEnabled: Boolean) {
         command("setprop", "persist.bluetooth.btsnooplogmode", previousMode)
