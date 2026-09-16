@@ -25,4 +25,5 @@
 - Added visible export progress stages and clearer onboarding permission states.
 - Made onboarding permission checks visible in dark mode and fixed their title alignment.
 - Fixed export permission errors by staging captures in app-owned storage before publishing them to Downloads.
+- Switched capture acquisition from slow bugreport snapshots to live btsnoop_net streaming.
 - Kept exports valid when Android BTSnoop records arrive slightly out of timestamp order.

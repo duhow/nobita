@@ -4,85 +4,120 @@ import android.os.Process
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
-import java.util.zip.ZipFile
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 import androidx.annotation.Keep
+import net.duhowpi.nobita.btsnoop.BtsnoopFileRecovery
+import net.duhowpi.nobita.btsnoop.BtsnoopNetClient
 import net.duhowpi.nobita.btsnoop.BtsnoopReader
-import net.duhowpi.nobita.btsnoop.BtsnoozDecoder
 import net.duhowpi.nobita.hci.ConnectionTracker
-import net.duhowpi.nobita.hci.PacketFilter
 import net.duhowpi.nobita.hci.HciPacketClassifier
-import net.duhowpi.nobita.pcapng.PcapngWriter
+import net.duhowpi.nobita.hci.PacketFilter
 import net.duhowpi.nobita.pcapng.PcapngValidator
+import net.duhowpi.nobita.pcapng.PcapngWriter
 
 @Keep
 class CaptureUserService : ICaptureUserService.Stub() {
+    private val lifecycleLock = Object()
+    private var client: BtsnoopNetClient? = null
+    private var captureId: String? = null
+    private var activeRaw: File? = null
+    private var exportRunning = false
+    private var completedExport: String? = null
     private var previousMode: String? = null
     private var previousDefaultMode: String? = null
     private var propertyModeChanged = false
     private var bluetoothInitiallyEnabled = false
     private var lastExportSummary = ""
-    @Volatile private var exportProgress = "Preparing export…"
+    @Volatile private var exportProgress = "Ready"
 
     @Keep
     fun destroy() {
+        abortCapture()
         System.exit(0)
     }
 
     override fun prepareCapture(): String {
         check(Process.myUid() == 2000 || Process.myUid() == 0) { "Unexpected UserService UID: ${Process.myUid()}" }
-        val mode = command("getprop", "persist.bluetooth.btsnooplogmode").trim().ifEmpty { "unknown" }
-        previousMode = mode
-        previousDefaultMode = "null"
-        propertyModeChanged = false
-        bluetoothInitiallyEnabled = true
-        return "uid=${Process.myUid()} mode=$mode previous=$previousMode defaultMode=$previousDefaultMode propertyChanged=$propertyModeChanged initialBluetooth=$bluetoothInitiallyEnabled"
+        synchronized(lifecycleLock) {
+            check(client == null && !exportRunning) { "A Bluetooth capture is already active" }
+            completedExport = null
+            lastExportSummary = ""
+            val mode = command("getprop", "persist.bluetooth.btsnooplogmode").trim().ifEmpty { "unknown" }
+            val id = UUID.randomUUID().toString().replace("-", "")
+            val raw = File(captureDirectory(), ".active-$id.btsnoop.part")
+            val newClient = BtsnoopNetClient(raw)
+            exportProgress = "Connecting to btsnoop_net…"
+            newClient.start()
+            client = newClient
+            captureId = id
+            activeRaw = raw
+            previousMode = mode
+            previousDefaultMode = "null"
+            propertyModeChanged = false
+            bluetoothInitiallyEnabled = true
+            return "uid=${Process.myUid()} mode=$mode previous=$mode defaultMode=null propertyChanged=false initialBluetooth=true source=btsnoop_net captureId=$id"
+        }
     }
 
     override fun exportPcapng(target: String, saveRaw: Boolean, previousMode: String, previousDefaultMode: String, propertyModeChanged: Boolean, bluetoothInitiallyEnabled: Boolean): String {
-        exportProgress = "Generating bugreport…"
-        this.previousMode = previousMode
-        this.previousDefaultMode = previousDefaultMode
-        this.propertyModeChanged = propertyModeChanged
-        this.bluetoothInitiallyEnabled = bluetoothInitiallyEnabled
-        var bugreport: File? = null
-        var raw: File? = null
-        var extracted = false
-        var converted = false
-        var captureType = "Unknown"
-        var output: File? = null
-        try {
-            val lines = commandLines("/system/bin/bugreportz", "-p")
-            val path = lines.firstOrNull { it.startsWith("OK:") }?.removePrefix("OK:")?.trim()
-                ?: error(lines.lastOrNull { it.startsWith("FAIL:") } ?: "bugreportz did not complete")
-            bugreport = File(path)
-            exportProgress = "Extracting BTSnoop…"
-            val rawFile = File.createTempFile("nobita-", ".btsnoop", File("/data/local/tmp"))
-            raw = rawFile
-            ZipFile(path).use { zip ->
-                val entry = zip.entries().asSequence().filter { !it.isDirectory }
-                    .map { it to score(it.name) }.filter { it.second > 0 }
-                    .maxByOrNull { it.second }?.first ?: error("No BTSnoop file found")
-                captureType = if (entry.name.substringAfterLast('/').startsWith("btsnooz_hci.log", true)) "BTSNOOZ fallback" else "Full BTSNOOP"
-                zip.getInputStream(entry).use { input -> rawFile.outputStream().use { output ->
-                    if (entry.name.substringAfterLast('/').startsWith("btsnooz_hci.log", true)) BtsnoozDecoder.decode(input, output)
-                        else input.copyTo(output)
-                    } }
+        val raw: File
+        val id: String
+        synchronized(lifecycleLock) {
+            while (exportRunning) lifecycleLock.wait()
+            completedExport?.let { return it }
+            exportRunning = true
+            val activeClient = client ?: run {
+                exportRunning = false
+                lifecycleLock.notifyAll()
+                error("No active btsnoop_net capture")
             }
-            extracted = true
-            val directory = captureDirectory()
-            val base = (target.ifBlank { "Bluetooth" }).replace(Regex("[^A-Za-z0-9._-]"), "_").take(48)
-            val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-            val generated = File(directory, "${base}_$stamp.pcapng")
-            output = generated
+            exportProgress = "Stopping live capture…"
+            activeClient.stop()
+            raw = activeRaw ?: error("No active capture file")
+            id = captureId ?: error("No active capture ID")
+            client = null
+            activeRaw = null
+            captureId = null
+        }
+
+        var result: String? = null
+        try {
+            exportProgress = "Finalizing BTSnoop…"
+            val recovery = BtsnoopFileRecovery.truncateToCompleteRecords(raw)
+            check(!recovery.malformedRecord) { "Malformed BTSnoop record; raw capture preserved" }
+            check(recovery.records > 0) { "No Bluetooth packets were received; raw capture preserved" }
+            val finalized = File(captureDirectory(), ".capture-$id.btsnoop")
+            if (!raw.renameTo(finalized)) {
+                raw.copyTo(finalized, overwrite = true)
+                raw.delete()
+            }
+            result = convertRaw(finalized, id, target, saveRaw, recovery.truncatedTail, "btsnoop_net")
+            return result
+        } finally {
+            synchronized(lifecycleLock) {
+                if (result != null) completedExport = result
+                exportRunning = false
+                lifecycleLock.notifyAll()
+            }
+        }
+    }
+
+    private fun convertRaw(raw: File, id: String, target: String, saveRaw: Boolean, truncatedTail: Boolean, source: String): String {
+        exportProgress = "Converting packets…"
+        val directory = captureDirectory()
+        val base = (target.ifBlank { "Bluetooth" }).replace(Regex("[^A-Za-z0-9._-]"), "_").take(48)
+        val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        val generated = File(directory, "${base}_$stamp.pcapng")
+        var converted = false
+        try {
             var written = 0
             var total = 0
             val handles = mutableSetOf<Int>()
             var attPackets = 0
-            exportProgress = "Converting packets…"
-            rawFile.inputStream().use { input -> PcapngWriter(generated.outputStream()).use { writer ->
+            raw.inputStream().use { input -> PcapngWriter(generated.outputStream()).use { writer ->
                 val tracker = ConnectionTracker()
                 for (record in BtsnoopReader.read(input)) {
                     val connection = tracker.connectionFor(record)
@@ -92,33 +127,25 @@ class CaptureUserService : ICaptureUserService.Stub() {
                     if (PacketFilter.matches(record, connection, target)) { writer.write(record); written++ }
                 }
             } }
-            lastExportSummary = "Capture: $captureType; target: ${target.ifBlank { "All devices" }}; packets: $total; target packets: $written; connections: ${handles.size}; handles: ${formatHandles(handles)}; ATT packets: $attPackets"
+            lastExportSummary = "Capture: $source; target: ${target.ifBlank { "All devices" }}; packets: $total; target packets: $written; connections: ${handles.size}; handles: ${formatHandles(handles)}; ATT packets: $attPackets; bytes: ${raw.length()}${if (truncatedTail) "; warning: truncated incomplete tail" else ""}"
             if (target.isNotBlank() && written == 0) error("No packets matched target; raw capture preserved for full export")
             PcapngValidator.validate(generated)
             exportProgress = "Finishing export…"
-            if (saveRaw) rawFile.copyTo(File(directory, "${base}_$stamp.btsnoop"), overwrite = true)
+            if (saveRaw) raw.copyTo(File(directory, "${base}_$stamp.btsnoop"), overwrite = true)
             converted = true
             return generated.absolutePath
         } finally {
-            if (extracted && !converted) raw?.copyTo(File(captureDirectory(), ".pending-${System.currentTimeMillis()}.btsnoop"), overwrite = true)
-            if (converted) cleanupPendingCaptures()
-            if (!converted) output?.delete()
-            raw?.delete()
-            bugreport?.delete()
-            restoreCaptureEnvironment(previousMode, previousDefaultMode, propertyModeChanged, bluetoothInitiallyEnabled)
+            if (!converted) raw.copyTo(File(directory, ".pending-$id.btsnoop"), overwrite = true)
+            if (converted) raw.delete()
+            if (!converted) generated.delete()
         }
     }
 
     override fun exportFullCapture(previousMode: String, previousDefaultMode: String, propertyModeChanged: Boolean, bluetoothInitiallyEnabled: Boolean): String {
         exportProgress = "Converting full capture…"
-        this.previousMode = previousMode
-        this.previousDefaultMode = previousDefaultMode
-        this.propertyModeChanged = propertyModeChanged
-        this.bluetoothInitiallyEnabled = bluetoothInitiallyEnabled
-        val directory = captureDirectory()
-        val raw = directory.listFiles { file -> file.name.startsWith(".pending-") && file.name.endsWith(".btsnoop") }
+        val raw = captureDirectory().listFiles { file -> file.name.startsWith(".pending-") && file.name.endsWith(".btsnoop") }
             ?.maxByOrNull { it.lastModified() } ?: error("No pending raw capture is available")
-        val output = File(directory, "Bluetooth_${System.currentTimeMillis()}.pcapng")
+        val output = File(captureDirectory(), "Bluetooth_${System.currentTimeMillis()}.pcapng")
         try {
             var total = 0
             var attPackets = 0
@@ -131,52 +158,42 @@ class CaptureUserService : ICaptureUserService.Stub() {
                     total++
                 }
             } }
-            lastExportSummary = "Packets: $total; target packets: $total; connections: ${tracker.connectionCount()}; handles: ${formatHandles(tracker.connectionHandles())}; ATT packets: $attPackets"
+            lastExportSummary = "Packets: $total; target packets: $total; connections: ${tracker.connectionCount()}; handles: ${formatHandles(tracker.connectionHandles())}; ATT packets: $attPackets; source: btsnoop_net"
             PcapngValidator.validate(output)
             exportProgress = "Finishing export…"
             raw.delete()
             return output.absolutePath
         } finally {
             if (!output.isFile) output.delete()
-            restoreCaptureEnvironment(previousMode, previousDefaultMode, propertyModeChanged, bluetoothInitiallyEnabled)
         }
     }
 
     override fun getLastExportSummary(): String = lastExportSummary
-
     override fun getExportProgress(): String = exportProgress
-
     override fun hasPendingCapture(): Boolean = captureDirectory()
         .listFiles { file -> file.name.startsWith(".pending-") && file.name.endsWith(".btsnoop") }
         ?.isNotEmpty() == true
 
-    private fun captureDirectory() = File(
-        "/sdcard/Android/data/net.duhowpi.nobita/files/BluetoothCaptures",
-    ).apply { mkdirs() }
-    private fun cleanupPendingCaptures() {
-        captureDirectory().listFiles { file -> file.name.startsWith(".pending-") && file.name.endsWith(".btsnoop") }
-            ?.forEach { it.delete() }
-    }
-
-    private fun formatHandles(handles: Set<Int>) = handles.sorted().joinToString(",") { "0x%04X".format(Locale.US, it) }.ifEmpty { "none" }
-
     override fun restoreCaptureEnvironment(previousMode: String, previousDefaultMode: String, propertyModeChanged: Boolean, bluetoothInitiallyEnabled: Boolean) {
-        // Capture assumes the user's Bluetooth snoop configuration is already enabled.
-        // Never restart or otherwise change Bluetooth during cleanup.
+        // btsnoop_net uses the user's existing Bluetooth developer setting. Never change it here.
     }
 
     override fun abortCapture() {
-        val mode = previousMode ?: return
-        restoreCaptureEnvironment(mode, previousDefaultMode ?: "null", propertyModeChanged, bluetoothInitiallyEnabled)
+        synchronized(lifecycleLock) {
+            client?.stop()
+            client = null
+            activeRaw?.delete()
+            activeRaw = null
+            captureId = null
+            lifecycleLock.notifyAll()
+        }
     }
 
-    private fun score(name: String): Int = when {
-        name.substringAfterLast('/').equals("btsnoop_hci.log", true) -> 1000
-        name.substringAfterLast('/').startsWith("btsnoop_hci.log", true) -> 700
-        name.substringAfterLast('/').startsWith("btsnooz_hci.log", true) -> 100
-        else -> 0
-    } + if ("/data/misc/bluetooth/logs/" in name || "/data/log/bt/" in name) 200 else 0
+    private fun captureDirectory() = File(
+        "/sdcard/Android/data/net.duhowpi.nobita/files/BluetoothCaptures",
+    ).apply { mkdirs() }
 
+    private fun formatHandles(handles: Set<Int>) = handles.sorted().joinToString(",") { "0x%04X".format(Locale.US, it) }.ifEmpty { "none" }
     private fun command(vararg args: String): String = commandLines(*args).joinToString("\n")
     private fun commandLines(vararg args: String): List<String> {
         val process = ProcessBuilder(*args).redirectErrorStream(true).start()

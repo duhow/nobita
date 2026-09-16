@@ -46,7 +46,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var captureTopBar: LinearLayout
     private lateinit var captureTopStatus: TextView
     private val binderReceived = Shizuku.OnBinderReceivedListener { if (!isFinishing) bindUserService() }
-    private val binderDead = Shizuku.OnBinderDeadListener { runOnUiThread { status.text = "Capture degraded: Shizuku stopped. Bluetooth logging may still be active; open Shizuku before exporting." } }
+    private val binderDead = Shizuku.OnBinderDeadListener { runOnUiThread { status.text = getString(R.string.capture_degraded) } }
     private val permissionResult = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
         if (requestCode == SHIZUKU_REQUEST && grantResult == PackageManager.PERMISSION_GRANTED) {
             runOnUiThread { status.text = "Shizuku authorized; ready to capture" }

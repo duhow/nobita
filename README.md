@@ -21,9 +21,9 @@ Nobita is an Android application for recording Bluetooth communication directly 
 3. Tap **Start capture**, use the other Bluetooth application, then tap **Stop & export**.
 4. Nobita creates a Wireshark-compatible PCAPNG under `Download/BluetoothCaptures`.
 
-The capture is full HCI traffic while recording. Device filtering is applied only during export using Bluetooth connection handles; a raw BTSnoop copy can optionally be retained. Captures and bugreports can contain sensitive payloads and are never uploaded automatically.
+The capture is a live, local stream from Android's `btsnoop_net` endpoint at `127.0.0.1:8872`. Enable both Bluetooth HCI snoop logging and its socket in Developer options before starting; Nobita does not change Bluetooth settings or restart the stack. Device filtering is applied only during export using Bluetooth connection handles; a raw BTSnoop copy can optionally be retained. Captures contain sensitive payloads and are never uploaded automatically.
 
-The current implementation targets Android 12+ behavior and requires a working Shizuku UserService. Hardware/OEM validation, especially Samsung-specific bugreport layouts, remains necessary before a production release.
+The endpoint is firmware-dependent and supports one live client. Devices without a compatible listener are reported as unsupported before capture begins. The current implementation targets Android 12+ behavior and requires a working Shizuku UserService.
 
 ### Why Nobita?
 

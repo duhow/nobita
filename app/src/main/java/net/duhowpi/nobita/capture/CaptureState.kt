@@ -4,7 +4,7 @@ sealed interface CaptureState {
     data object Idle : CaptureState
     data object Preparing : CaptureState
     data class Capturing(val startedAt: Long, val target: String) : CaptureState
-    data object GeneratingBugreport : CaptureState
+    data object Finalizing : CaptureState
     data object Extracting : CaptureState
     data object Parsing : CaptureState
     data object Filtering : CaptureState
