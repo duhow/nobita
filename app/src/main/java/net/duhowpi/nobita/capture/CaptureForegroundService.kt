@@ -9,6 +9,8 @@ import android.content.ComponentName
 import android.content.ServiceConnection
 import android.os.IBinder
 import android.os.PowerManager
+import android.os.Handler
+import android.os.Looper
 import rikka.shizuku.Shizuku
 import net.duhowpi.nobita.shizuku.CaptureUserService
 import net.duhowpi.nobita.shizuku.ICaptureUserService
@@ -19,12 +21,20 @@ import net.duhowpi.nobita.export.CaptureFileStore
 
 class CaptureForegroundService : Service() {
     @Volatile private var exportStarted = false
+    private val notificationHandler = Handler(Looper.getMainLooper())
+    private val notificationUpdater = object : Runnable {
+        override fun run() {
+            getSystemService(NotificationManager::class.java).notify(ID, notification())
+            notificationHandler.postDelayed(this, 1_000)
+        }
+    }
     override fun onCreate() {
         super.onCreate()
         getSystemService(NotificationManager::class.java).createNotificationChannel(
             NotificationChannel(CHANNEL, "Bluetooth capture", NotificationManager.IMPORTANCE_LOW)
         )
         startForeground(ID, notification())
+        notificationHandler.postDelayed(notificationUpdater, 1_000)
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) startExport()
@@ -32,6 +42,7 @@ class CaptureForegroundService : Service() {
     }
     override fun onBind(intent: Intent?): IBinder? = null
     override fun onDestroy() {
+        notificationHandler.removeCallbacks(notificationUpdater)
         val session = CaptureSession.load(this)
         if (session != null && Shizuku.pingBinder()) {
             try { Shizuku.bindUserService(userServiceArgs(), object : ServiceConnection {
