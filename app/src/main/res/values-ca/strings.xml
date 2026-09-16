@@ -1,4 +1,3 @@
 <resources>
     <string name="app_name">Nobita</string>
-    <string name="app_description">Captura HCI de Bluetooth des de l’endpoint btsnoop_net local del telèfon (127.0.0.1:8872). El filtre del dispositiu s’aplica en finalitzar.</string>
 </resources>

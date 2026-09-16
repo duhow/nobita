@@ -55,3 +55,6 @@
 - Reduced adaptive launcher icon size for correct display.
 - Replaced paired-device selection with a compact devices icon next to refresh.
 - Removed the recent-target button.
+- Hide completed-capture actions while a new capture starts.
+- Keep finalization controls in a consistent position.
+- Simplify the main screen by removing technical endpoint details.

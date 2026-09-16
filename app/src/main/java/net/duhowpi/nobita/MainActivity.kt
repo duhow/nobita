@@ -184,6 +184,7 @@ class MainActivity : AppCompatActivity() {
             Shizuku.requestPermission(SHIZUKU_REQUEST); return
         }
         val target = findViewById<android.widget.EditText>(R.id.target).text.toString()
+        findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.GONE
         val saveRaw = getSharedPreferences(SettingsActivity.PREFERENCES, MODE_PRIVATE).getBoolean(SettingsActivity.SAVE_RAW, false)
         Thread {
             var startedCaptureId: String? = null
