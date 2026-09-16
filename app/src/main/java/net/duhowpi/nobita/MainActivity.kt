@@ -147,7 +147,7 @@ class MainActivity : AppCompatActivity() {
                 runOnUiThread {
                     TargetHistory.add(this, target)
                     CaptureSession(System.currentTimeMillis(), target, captureId(result), saveRaw = saveRaw).save(this)
-                    status.text = "Capture active: $result"
+                    status.text = getString(R.string.capture_active)
                     showCaptureActive()
                     ContextCompat.startForegroundService(this, Intent(this, CaptureForegroundService::class.java))
                     findViewById<Button>(R.id.start_capture).visibility = android.view.View.GONE
@@ -477,7 +477,10 @@ class MainActivity : AppCompatActivity() {
         return try { block() } finally { if (lock.isHeld) lock.release() }
     }
 
-    private fun captureId(result: String): String = result.substringAfter("captureId=", "").substringBefore(' ')
+    private fun captureId(result: String): String = JSONObject(result).let {
+        check(it.optInt("version") == 1 && it.optString("state") == "CAPTURING") { "Invalid capture start response" }
+        it.getString("captureId")
+    }
 
-    companion object { private const val SHIZUKU_REQUEST = 100; private const val USER_SERVICE_VERSION = 7 }
+    companion object { private const val SHIZUKU_REQUEST = 100; private const val USER_SERVICE_VERSION = 8 }
 }

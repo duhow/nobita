@@ -35,3 +35,4 @@
 - Reconciled interrupted captures after the app or UserService is recreated.
 - Preserved one-time conversion for legacy timestamp-named pending captures.
 - Made stop and export operations safe against stale or duplicate capture actions.
+- Made capture-start responses versioned and machine-readable.

@@ -61,7 +61,14 @@ class CaptureUserService : ICaptureUserService.Stub() {
             activeRaw = raw
             this.target = target
             this.saveRaw = saveRaw
-            return "uid=${Process.myUid()} mode=$mode source=btsnoop_net captureId=$id"
+            return JSONObject()
+                .put("version", 1)
+                .put("state", "CAPTURING")
+                .put("captureId", id)
+                .put("source", "btsnoop_net")
+                .put("uid", Process.myUid())
+                .put("mode", mode)
+                .toString()
         }
     }
 
