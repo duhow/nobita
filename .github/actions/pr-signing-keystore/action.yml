@@ -1,0 +1,55 @@
+name: 'PR Signing Keystore'
+description: >
+  Maintains a stable signing keystore via cache so all PR builds are signed
+  with the same key (enabling APK upgrades without reinstall).
+  Running on push/main populates the default-branch cache scope, which all
+  PR runs can then restore from.
+
+inputs:
+  apk-path:
+    description: 'Path to the APK to sign. Only used when the triggering event is pull_request.'
+    required: false
+    default: 'app/build/outputs/apk/debug/app-debug.apk'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Restore PR signing keystore
+      id: restore_keystore
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ github.workspace }}/pr-signing.jks
+        key: pr-apk-signing-keystore-v1
+
+    - name: Generate PR signing keystore
+      if: steps.restore_keystore.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        keytool -genkey -v \
+          -keystore "${{ github.workspace }}/pr-signing.jks" \
+          -keyalg RSA \
+          -keysize 3072 \
+          -validity 10000 \
+          -alias pr-key \
+          -dname "CN=PR Build, O=CI, C=US" \
+          -storepass pr-signing-pass \
+          -keypass pr-signing-pass
+
+    - name: Save PR signing keystore
+      if: steps.restore_keystore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ github.workspace }}/pr-signing.jks
+        key: pr-apk-signing-keystore-v1
+
+    - name: Sign APK with PR key
+      if: github.event_name == 'pull_request'
+      shell: bash
+      run: |
+        BUILD_TOOLS=$(ls "$ANDROID_SDK_ROOT/build-tools" | sort -V | tail -1)
+        "$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS/apksigner" sign \
+          --ks "${{ github.workspace }}/pr-signing.jks" \
+          --ks-pass pass:pr-signing-pass \
+          --key-pass pass:pr-signing-pass \
+          --ks-key-alias pr-key \
+          "${{ inputs.apk-path }}"

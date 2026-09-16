@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Supported application languages.
+        To add a new language:
+          1. Create res/values-XX/strings.xml with the translated strings.
+             Any untranslated keys will automatically fall back to the English default in values/strings.xml.
+          2. Add the BCP-47 language code to `language_codes` and the native display name to `language_names`
+             at the same position.
+          3. Add a matching <locale android:name="XX" /> entry to res/xml/locale_config.xml so that
+             the Android system language selector (API 33+) recognises the new locale.
+        IMPORTANT: the two arrays must always have the same number of items.
+        A mismatch will cause an IllegalStateException at runtime when the settings screen is opened.
+        No source-code changes are required beyond updating these XML resources.
+    -->
+    <string-array name="language_codes">
+        <item>en</item>
+        <item>es</item>
+        <item>ca</item>
+    </string-array>
+
+    <string-array name="language_names">
+        <item>English</item>
+        <item>Español</item>
+        <item>Català</item>
+    </string-array>
+</resources>

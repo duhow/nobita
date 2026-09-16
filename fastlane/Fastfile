@@ -1,0 +1,62 @@
+opt_out_usage # Disable metrics collection
+default_platform(:android)
+
+platform :android do
+  desc "Build APK or AAB. Accepts build_type option (default: Debug) and format option (apk/aab, default: apk). Keystore is only used for Release builds."
+  lane :build do |options|
+    build_type = (options[:build_type] || "Debug").capitalize
+    format = (options[:format] || "apk").downcase
+    task = format == "aab" ? "bundle" : "assemble"
+
+    gradle_options = {
+      task: task,
+      build_type: build_type,
+      flags: "--stacktrace",
+      print_command: false,
+      gradle_path: "fastlane/gradlew",
+    }
+
+    if build_type == "Release"
+      gradle_options[:properties] = {
+        "android.injected.signing.store.file" => ENV["KEYSTORE_PATH"],
+        "android.injected.signing.store.password" => ENV["ANDROID_KEYSTORE_PASSWORD"],
+        "android.injected.signing.key.alias" => ENV["ANDROID_KEY_ALIAS"],
+        "android.injected.signing.key.password" => ENV["ANDROID_KEY_PASSWORD"],
+      }
+    end
+
+    gradle(**gradle_options)
+
+    next unless ENV["GITHUB_OUTPUT"]
+
+    tags = sh("git tag --list 'v[0-9]*'", log: false).strip.split("\n").reject(&:empty?)
+    version_code = [tags.size, 1].max
+    File.open(ENV["GITHUB_OUTPUT"], "a") do |f|
+      f.puts "version_code=#{version_code}"
+      changelog_file = "fastlane/metadata/android/en-US/changelogs/#{version_code}.txt"
+      if File.exist?(changelog_file)
+        f.puts "body<<CHANGELOG_EOF"
+        f.puts File.read(changelog_file).strip
+        f.puts "CHANGELOG_EOF"
+      end
+    end
+  end
+
+  desc "Publish AAB to Google Play. Accepts track option (default: internal). Requires GOOGLE_PLAY_JSON_KEY env var."
+  lane :publish do |options|
+    track = options[:track] || "internal"
+    aab_path = Dir["app/build/outputs/bundle/release/*.aab"].first
+    UI.user_error!("AAB not found. Run 'fastlane build build_type:Release format:aab' first.") unless aab_path
+
+    supply(
+      track: track,
+      aab: aab_path,
+      json_key_data: ENV["GOOGLE_PLAY_JSON_KEY"],
+      skip_upload_apk: true,
+      skip_upload_metadata: false,
+      skip_upload_changelogs: false,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
+  end
+end

@@ -1,0 +1,114 @@
+name: Release Android
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  APP_NAME: app-release
+  BUILD_AAB: "false"
+
+jobs:
+  release:
+    name: Build and Publish Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      KEYSTORE_FILE: release.jks
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version-file: .java-version
+          distribution: temurin
+          cache: gradle
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@319994f95fa847cf3fb3cd3dbe89f6dcde9f178f # tag v1.295.0
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+
+      - name: Decode Android keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/$KEYSTORE_FILE"
+
+      - name: Build release APK
+        id: build
+        run: bundle exec fastlane build build_type:Release
+        env:
+          KEYSTORE_PATH: ${{ runner.temp }}/${{ env.KEYSTORE_FILE }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Build release AAB
+        if: ${{ env.BUILD_AAB == 'true' }}
+        run: bundle exec fastlane build build_type:Release format:aab
+        env:
+          KEYSTORE_PATH: ${{ runner.temp }}/${{ env.KEYSTORE_FILE }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Rename bundles
+        env:
+          TARGET_NAME: ${{ format('{0}-{1}', env.APP_NAME, github.ref_name) }}
+          BASE_PATH: app/build/outputs
+        run: |
+          cp -v "${BASE_PATH}/apk/release/app-release.apk" "${TARGET_NAME}.apk"
+          if [ -f "${BASE_PATH}/bundle/release/app-release.aab" ]; then
+            cp -v "${BASE_PATH}/bundle/release/app-release.aab" "${TARGET_NAME}.aab"
+          fi
+
+      - name: Attest APK build provenance
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # tag v4.1.0
+        with:
+          subject-path: ${{ format('{0}-{1}.apk', env.APP_NAME, github.ref_name) }}
+
+      - name: Attest AAB build provenance
+        if: ${{ env.BUILD_AAB == 'true' }}
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # tag v4.1.0
+        with:
+          subject-path: ${{ format('{0}-{1}.aab', env.APP_NAME, github.ref_name) }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body: ${{ steps.build.outputs.body }}
+          fail_on_unmatched_files: false
+          files: |
+            ${{ format('{0}-{1}.apk', env.APP_NAME, github.ref_name) }}
+            ${{ env.BUILD_AAB == 'true' && format('{0}-{1}.aab', env.APP_NAME, github.ref_name) || '' }}
+
+      - name: Publish to Google Play
+        if: ${{ env.BUILD_AAB == 'true' }}
+        continue-on-error: true
+        run: bundle exec fastlane publish
+        env:
+          GOOGLE_PLAY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
+
+      - name: Prepare next version changelog
+        run: |
+          NEXT_VERSION=$(( ${{ steps.build.outputs.version_code }} + 1 ))
+          NEXT_CHANGELOG="fastlane/metadata/android/en-US/changelogs/${NEXT_VERSION}.txt"
+          git fetch origin main
+          git checkout main
+          if [ ! -f "$NEXT_CHANGELOG" ]; then
+            printf 'Add user-facing changes for the next release here.\n' > "$NEXT_CHANGELOG"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add "$NEXT_CHANGELOG"
+            git commit -m "chore: prepare changelog for version ${NEXT_VERSION}"
+            git push origin main
+          fi

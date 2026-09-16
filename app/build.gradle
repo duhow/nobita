@@ -1,0 +1,80 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+def getGitVersionName = { ->
+    try {
+        return providers.exec {
+            commandLine 'git', 'describe', '--tags', '--always'
+        }.standardOutput.asText.get().trim().replaceFirst('^v', '')
+    } catch (Exception e) {
+        return 'unknown'
+    }
+}
+
+def getGitVersionCode = { ->
+    try {
+        def tags = providers.exec {
+            commandLine 'git', 'tag', '--list', 'v[0-9]*'
+        }.standardOutput.asText.get().trim()
+        def count = tags.isEmpty() ? 0 : tags.split('\n').findAll { !it.isEmpty() }.size()
+        return count > 0 ? count : 1
+    } catch (Exception e) {
+        return 1
+    }
+}
+
+android {
+    namespace 'net.duhowpi.myapp'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "net.duhowpi.myapp"
+        minSdk 26
+        targetSdk 35
+        versionCode getGitVersionCode()
+        versionName getGitVersionName()
+
+        buildConfigField "String", "PROJECT_AUTHOR", "\"duhow\""
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    kotlinOptions {
+        jvmTarget = '11'
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.16.0'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.2.0'
+}
+
+tasks.register('printVersionCode') {
+    doLast {
+        println android.defaultConfig.versionCode
+    }
+}

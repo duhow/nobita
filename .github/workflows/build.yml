@@ -1,0 +1,67 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Debug APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version-file: .java-version
+          distribution: temurin
+          cache: gradle
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@319994f95fa847cf3fb3cd3dbe89f6dcde9f178f # tag v1.295.0
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+
+      - name: Build debug APK
+        run: bundle exec fastlane build
+
+      - name: Setup and sign with PR keystore
+        uses: ./.github/actions/pr-signing-keystore
+        with:
+          apk-path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload debug APK
+        id: upload_debug_apk
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-debug
+          archive: false
+          retention-days: 2
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Comment debug artifact download link
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: marocchino/sticky-pull-request-comment@70d2764d1a7d5d9560b100cbea0077fc8f633987 # tag v3.0.2
+        with:
+          header: debug-apk-download
+          recreate: true
+          message: |
+            ✅ Debug APK artifact is ready for commit ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }} .  
+            💾 [Download APK artifact here](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload_debug_apk.outputs.artifact-id }}).
+            Workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}

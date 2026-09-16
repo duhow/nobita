@@ -1,0 +1,20 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+*.jks
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+app/release/
+app/build/
+!fastlane/gradle/wrapper/gradle-wrapper.jar
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
