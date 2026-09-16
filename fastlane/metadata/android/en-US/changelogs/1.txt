@@ -1,2 +1,3 @@
 - Initial Nobita application setup.
 - Added local Shizuku-backed Bluetooth HCI capture and PCAPNG export.
+- Added paired and nearby device selection plus optional raw BTSnoop retention.
