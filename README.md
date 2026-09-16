@@ -8,7 +8,7 @@
   <a href="https://github.com/duhow/nobita/actions/workflows/build.yml">
     <img src="https://github.com/duhow/nobita/actions/workflows/build.yml/badge.svg" alt="Build">
   </a>
-  <img src="https://img.shields.io/badge/Android-8.0%2B-brightgreen?logo=android" alt="Android 8.0+">
+  <img src="https://img.shields.io/badge/Android-12%2B-brightgreen?logo=android" alt="Android 12+">
   <img src="https://img.shields.io/badge/Kotlin-2.x-7F52FF?logo=kotlin" alt="Kotlin">
 </p>
 
