@@ -53,3 +53,5 @@
 - Updated the launcher icon to use an adaptive dark background without a white wrapper circle.
 - Removed Kotlin and Android deprecation warnings from capture setup.
 - Reduced adaptive launcher icon size for correct display.
+- Replaced paired-device selection with a compact devices icon next to refresh.
+- Removed the recent-target button.

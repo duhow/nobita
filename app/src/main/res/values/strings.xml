@@ -29,8 +29,6 @@
     <string name="export_full">Finalize full capture</string>
     <string name="no_pending_capture">No pending raw capture; ready for a new capture.</string>
     <string name="battery_settings">Battery optimization settings</string>
-    <string name="choose_recent">Choose recent target</string>
-    <string name="no_recent_targets">No recent targets.</string>
     <string name="onboarding_title">Set up Nobita</string>
     <string name="onboarding_description">Grant the required access before capturing Bluetooth traffic. Enable Bluetooth HCI snoop logging and its socket in Developer options first. Nobita uses the local btsnoop_net endpoint; unsupported firmware cannot capture. Choose a folder where temporary and final capture files will be stored. Notifications and battery exemption are optional but recommended.</string>
     <string name="onboarding_shizuku_title">Shizuku</string>

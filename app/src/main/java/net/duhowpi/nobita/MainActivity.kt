@@ -34,7 +34,6 @@ import net.duhowpi.nobita.capture.CaptureForegroundService
 import net.duhowpi.nobita.capture.CaptureSession
 import net.duhowpi.nobita.capture.CaptureStage
 import net.duhowpi.nobita.capture.CaptureState
-import net.duhowpi.nobita.capture.TargetHistory
 import net.duhowpi.nobita.shizuku.CaptureUserService
 import net.duhowpi.nobita.shizuku.ICaptureUserService
 import net.duhowpi.nobita.export.CaptureFileStore
@@ -140,9 +139,8 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.start_capture).setOnClickListener { startCapture() }
         findViewById<Button>(R.id.stop_export).setOnClickListener { stopAndExport() }
         findViewById<Button>(R.id.export_full).setOnClickListener { exportFullCapture() }
-        findViewById<Button>(R.id.choose_paired).setOnClickListener { choosePairedDevice() }
+        findViewById<ImageButton>(R.id.choose_paired).setOnClickListener { choosePairedDevice() }
         findViewById<ImageButton>(R.id.scan_nearby).setOnClickListener { scanNearby() }
-        findViewById<Button>(R.id.choose_recent).setOnClickListener { chooseRecentTarget() }
         findViewById<ImageButton>(R.id.open_capture).setOnClickListener { openOrShare(false) }
         findViewById<ImageButton>(R.id.share_capture).setOnClickListener { openOrShare(true) }
         findViewById<ImageButton>(R.id.settings).setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
@@ -194,7 +192,6 @@ class MainActivity : AppCompatActivity() {
                 val captureSessionId = captureId(result)
                 startedCaptureId = captureSessionId
                 runOnUiThread {
-                    TargetHistory.add(this, target)
                     CaptureSession(System.currentTimeMillis(), target, captureSessionId, saveRaw = saveRaw).save(this)
                     status.text = getString(R.string.capture_active)
                     showCaptureActive()
@@ -467,11 +464,6 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this).setTitle(R.string.choose_paired).setItems(labels) { _, which ->
             findViewById<android.widget.EditText>(R.id.target).setText(devices[which].address)
         }.show()
-    }
-    private fun chooseRecentTarget() {
-        val targets = TargetHistory.list(this)
-        if (targets.isEmpty()) { status.text = getString(R.string.no_recent_targets); return }
-        AlertDialog.Builder(this).setTitle(R.string.choose_recent).setItems(targets.toTypedArray()) { _, which -> findViewById<android.widget.EditText>(R.id.target).setText(targets[which]) }.show()
     }
     private fun scanNearby() {
         if (activeScan != null) return

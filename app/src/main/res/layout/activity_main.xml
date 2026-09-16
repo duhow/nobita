@@ -33,18 +33,12 @@
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="24dp" android:gravity="center_vertical" android:orientation="horizontal">
         <EditText android:id="@+id/target" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:hint="@string/capture_target_hint" android:inputType="text" />
         <ImageButton android:id="@+id/scan_nearby" android:layout_width="56dp" android:layout_height="56dp" android:layout_marginStart="8dp" android:background="?attr/selectableItemBackgroundBorderless" android:contentDescription="@string/scan_nearby" android:padding="16dp" android:src="@drawable/ic_refresh" app:tint="?attr/colorControlNormal" />
+        <ImageButton android:id="@+id/choose_paired" android:layout_width="56dp" android:layout_height="56dp" android:layout_marginStart="4dp" android:background="?attr/selectableItemBackgroundBorderless" android:contentDescription="@string/choose_paired" android:padding="16dp" android:src="@drawable/ic_devices_other" app:tint="?attr/colorControlNormal" />
     </LinearLayout>
-
-    <Button
-        android:id="@+id/choose_paired"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/choose_paired" />
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
         <ImageView android:id="@+id/scan_indicator" android:layout_width="24dp" android:layout_height="24dp" android:contentDescription="@null" android:src="@drawable/ic_progress_activity" android:visibility="gone" />
         <TextView android:id="@+id/scan_status" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" />
     </LinearLayout>
-    <Button android:id="@+id/choose_recent" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/choose_recent" />
     <Button
         android:id="@+id/start_capture"
         android:layout_width="match_parent"
