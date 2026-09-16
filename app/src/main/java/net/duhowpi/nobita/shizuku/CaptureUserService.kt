@@ -25,10 +25,12 @@ class CaptureUserService : ICaptureUserService.Stub() {
         command("setprop", "persist.bluetooth.btsnooplogmode", "full")
         check(command("getprop", "persist.bluetooth.btsnooplogmode").trim() == "full") { "Bluetooth snoop mode was rejected" }
         restartBluetooth()
-        return "uid=${Process.myUid()} mode=full"
+        return "uid=${Process.myUid()} mode=full previous=$previousMode initialBluetooth=$bluetoothInitiallyEnabled"
     }
 
-    override fun exportPcapng(target: String, saveRaw: Boolean): String {
+    override fun exportPcapng(target: String, saveRaw: Boolean, previousMode: String, bluetoothInitiallyEnabled: Boolean): String {
+        this.previousMode = previousMode
+        this.bluetoothInitiallyEnabled = bluetoothInitiallyEnabled
         val lines = commandLines("/system/bin/bugreportz", "-p")
         val path = lines.firstOrNull { it.startsWith("OK:") }?.removePrefix("OK:")?.trim()
             ?: error(lines.lastOrNull { it.startsWith("FAIL:") } ?: "bugreportz did not complete")

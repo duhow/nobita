@@ -30,13 +30,14 @@ class CaptureForegroundService : Service() {
     }
     override fun onBind(intent: Intent?): IBinder? = null
     private fun startExport() {
-        val target = CaptureSession.load(this)?.target.orEmpty()
+        val session = CaptureSession.load(this) ?: run { stopSelf(); return }
+        val target = session.target
         if (!Shizuku.pingBinder()) { stopSelf(); return }
         val wakeLock = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Nobita:export").apply { setReferenceCounted(false); acquire(30 * 60 * 1000L) }
         try { Shizuku.bindUserService(userServiceArgs(), object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
                 Thread {
-                    try { ICaptureUserService.Stub.asInterface(binder).exportPcapng(target, false) }
+                    try { ICaptureUserService.Stub.asInterface(binder).exportPcapng(target, false, session.previousMode, session.bluetoothInitiallyEnabled) }
                     finally {
                         if (wakeLock.isHeld) wakeLock.release()
                         Shizuku.unbindUserService(userServiceArgs(), this, true)

@@ -80,7 +80,9 @@ class MainActivity : AppCompatActivity() {
             try {
                 val result = withWakeLock { userService?.prepareCapture() ?: error("Shizuku UserService is not connected") }
                 runOnUiThread {
-                    CaptureSession(System.currentTimeMillis(), findViewById<android.widget.EditText>(R.id.target).text.toString()).save(this)
+                    val environment = result.substringAfter("previous=", "disabled").substringBefore(" initialBluetooth=")
+                    val initialBluetooth = result.substringAfter("initialBluetooth=", "true").toBoolean()
+                    CaptureSession(System.currentTimeMillis(), findViewById<android.widget.EditText>(R.id.target).text.toString(), environment, initialBluetooth).save(this)
                     status.text = "Capture active: $result"
                     ContextCompat.startForegroundService(this, Intent(this, CaptureForegroundService::class.java))
                     findViewById<Button>(R.id.start_capture).visibility = android.view.View.GONE
@@ -98,7 +100,8 @@ class MainActivity : AppCompatActivity() {
             try {
                 val target = findViewById<android.widget.EditText>(R.id.target).text.toString()
                 val saveRaw = findViewById<android.widget.CheckBox>(R.id.save_raw).isChecked
-                val path = withWakeLock { userService?.exportPcapng(target, saveRaw) ?: error("Shizuku UserService is not connected") }
+                val session = CaptureSession.load(this) ?: error("No active capture session")
+                val path = withWakeLock { userService?.exportPcapng(target, saveRaw, session.previousMode, session.bluetoothInitiallyEnabled) ?: error("Shizuku UserService is not connected") }
                 runOnUiThread {
                     CaptureSession.clear(this); exportedFile = File(path)
                     status.text = "PCAPNG exported: $path"; stopService(Intent(this, CaptureForegroundService::class.java)); resetButtons()
