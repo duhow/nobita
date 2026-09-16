@@ -81,7 +81,26 @@ class MainActivity : AppCompatActivity() {
             Thread {
                 val captureStatus = runCatching { userService?.getCaptureStatus() }.getOrNull()?.let(::parseCaptureStatus)
                 if (captureStatus?.state == "CAPTURING" || captureStatus?.state == "INTERRUPTED") {
-                    runOnUiThread { status.text = captureStatusText(captureStatus) }
+                    runOnUiThread {
+                        status.text = captureStatusText(captureStatus)
+                        if (CaptureSession.load(this@MainActivity) == null && captureStatus.captureId != null && captureStatus.startedAt > 0) {
+                            CaptureSession(
+                                captureStatus.startedAt,
+                                captureStatus.target.orEmpty(),
+                                captureStatus.captureId,
+                                captureStatus.saveRaw,
+                                bytesReceived = captureStatus.bytes,
+                                lastDataAt = captureStatus.lastDataAt,
+                            ).save(this@MainActivity)
+                            showCaptureActive()
+                            findViewById<Button>(R.id.start_capture).visibility = android.view.View.GONE
+                            findViewById<Button>(R.id.stop_export).apply {
+                                visibility = android.view.View.VISIBLE
+                                isEnabled = true
+                            }
+                            startCaptureStatusPolling()
+                        }
+                    }
                 }
             }.start()
             reconcilePendingSession()
@@ -292,6 +311,10 @@ class MainActivity : AppCompatActivity() {
                 it.optLong("bytes"),
                 it.optLong("lastDataAt"),
                 it.optString("reason").takeUnless { reason -> reason.isBlank() || reason == "null" },
+                it.optString("captureId").takeUnless { id -> id.isBlank() || id == "null" },
+                it.optLong("startedAt"),
+                it.optString("target").takeUnless { target -> target.isBlank() || target == "null" },
+                it.optBoolean("saveRaw"),
             )
         }
     }.getOrNull()
@@ -300,7 +323,16 @@ class MainActivity : AppCompatActivity() {
     } else {
         getString(R.string.capture_active_progress, value.bytes, if (value.lastDataAt > 0) ", last data ${value.lastDataAt}" else "")
     }
-    private data class CaptureStatusView(val state: String, val bytes: Long, val lastDataAt: Long, val reason: String?)
+    private data class CaptureStatusView(
+        val state: String,
+        val bytes: Long,
+        val lastDataAt: Long,
+        val reason: String?,
+        val captureId: String?,
+        val startedAt: Long,
+        val target: String?,
+        val saveRaw: Boolean,
+    )
     private fun showCaptureActive() {
         captureTopBar.setBackgroundColor(ContextCompat.getColor(this, R.color.capture_active_blue))
         captureTopStatus.setTextColor(android.graphics.Color.WHITE)

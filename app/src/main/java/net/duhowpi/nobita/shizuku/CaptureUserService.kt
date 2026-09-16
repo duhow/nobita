@@ -25,6 +25,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
     private val lifecycleLock = Object()
     private var client: BtsnoopNetClient? = null
     private var captureId: String? = null
+    private var captureStartedAt = 0L
     private var activeRaw: File? = null
     private var target = ""
     private var saveRaw = false
@@ -62,6 +63,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
             newClient.start()
             client = newClient
             captureId = id
+            captureStartedAt = System.currentTimeMillis()
             activeRaw = raw
             this.target = target
             this.saveRaw = saveRaw
@@ -102,6 +104,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
             client = null
             activeRaw = null
             captureId = null
+            captureStartedAt = 0L
         }
 
         var result: String? = null
@@ -222,6 +225,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
             client = null
             activeRaw = null
             captureId = null
+            captureStartedAt = 0L
             target = ""
             saveRaw = false
             lifecycleLock.notifyAll()
@@ -300,6 +304,9 @@ class CaptureUserService : ICaptureUserService.Stub() {
         .put("version", 1)
         .put("state", state)
         .put("captureId", captureId ?: JSONObject.NULL)
+        .put("startedAt", captureStartedAt)
+        .put("target", target.takeIf { captureId != null } ?: JSONObject.NULL)
+        .put("saveRaw", saveRaw)
         .put("bytes", bytes)
         .put("lastDataAt", lastDataAt)
         .put("reason", reason ?: JSONObject.NULL)
