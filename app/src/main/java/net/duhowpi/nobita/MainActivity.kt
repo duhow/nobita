@@ -92,6 +92,11 @@ class MainActivity : AppCompatActivity() {
         if (Shizuku.pingBinder()) bindUserService() else status.text = getString(R.string.shizuku_not_ready)
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (CaptureSession.load(this) == null) resetButtons()
+    }
+
     override fun onDestroy() {
         scanGeneration++
         activeScan?.let { (scanner, callback) -> scanner.stopScan(callback) }
