@@ -91,8 +91,14 @@ class CaptureForegroundService : Service() {
     private fun notification() = NotificationCompat.Builder(this, CHANNEL)
         .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
         .setContentTitle(getString(R.string.capture_active))
-        .setContentText(getString(R.string.capture_notification_text)).setOngoing(true)
+        .setContentText(captureText()).setOngoing(true)
         .setContentIntent(PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT))
         .addAction(0, getString(R.string.stop_export), PendingIntent.getService(this, 1, Intent(this, CaptureForegroundService::class.java).setAction(ACTION_STOP), PendingIntent.FLAG_IMMUTABLE)).build()
+    private fun captureText(): String {
+        val session = CaptureSession.load(this) ?: return getString(R.string.capture_notification_text)
+        val target = session.target.ifBlank { "All devices" }
+        val seconds = ((System.currentTimeMillis() - session.startedAt) / 1000).coerceAtLeast(0)
+        return "Target: $target • ${seconds / 60}m ${seconds % 60}s"
+    }
     companion object { private const val CHANNEL = "capture"; private const val ID = 42; const val ACTION_STOP = "net.duhowpi.nobita.STOP" }
 }
