@@ -13,6 +13,7 @@ object PcapngValidator {
             check(input.readInt() == 28) { "Invalid PCAPNG section trailer" }
             var interfaceFound = false
             var packets = 0
+            var lastTimestamp = Long.MIN_VALUE
             while (input.available() > 0) {
                 val type = input.readInt()
                 val length = input.readInt()
@@ -24,6 +25,9 @@ object PcapngValidator {
                     1 -> { check(payload.size >= 8 && ((payload[0].toInt() and 0xff) shl 8 or (payload[1].toInt() and 0xff)) == 201) { "Unexpected link type" }; interfaceFound = true }
                     6 -> {
                         check(payload.size >= 20) { "Invalid enhanced packet block" }
+                        val timestamp = (readInt(payload, 4).toLong() shl 32) or (readInt(payload, 8).toLong() and 0xffffffffL)
+                        check(timestamp >= lastTimestamp) { "Non-monotonic packet timestamps" }
+                        lastTimestamp = timestamp
                         val captured = readInt(payload, 12)
                         check(captured >= 4 && payload.size >= 20 + ((captured + 3) and -4)) { "Invalid packet length" }
                         val packet = payload.copyOfRange(20, 20 + captured)
