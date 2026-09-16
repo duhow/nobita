@@ -6,6 +6,7 @@ data class Connection(val handle: Int, val address: String, var name: String? = 
 
 class ConnectionTracker {
     private val connections = mutableMapOf<Int, Connection>()
+    private val seenHandles = mutableSetOf<Int>()
     private val names = mutableMapOf<String, String>()
     fun connectionFor(record: BtsnoopRecord): Connection? {
         val packet = record.packet
@@ -39,6 +40,7 @@ class ConnectionTracker {
             0x03 -> if (packet.size >= 12) {
                 val address = address(packet, 6)
                 val handle = readLe16(packet, 4)
+                seenHandles += handle
                 connections[handle] = Connection(handle, address, names[address])
             }
             0x07 -> if (packet.size >= 11) {
@@ -51,6 +53,7 @@ class ConnectionTracker {
                     val addressOffset = 9
                     if (packet.size >= addressOffset + 6) {
                         val address = address(packet, addressOffset)
+                        seenHandles += handle
                         connections[handle] = Connection(handle, address, names[address])
                     }
                 }
@@ -88,6 +91,7 @@ class ConnectionTracker {
         names[address] = name
         connections.values.filter { it.address == address }.forEach { it.name = name }
     }
+    fun connectionCount(): Int = seenHandles.size
     private fun address(packet: ByteArray, offset: Int) = (0..5).joinToString(":") { "%02X".format(packet[offset + 5 - it].toInt() and 0xff) }
     private fun readLe16(packet: ByteArray, offset: Int) = (packet[offset].toInt() and 0xff) or ((packet[offset + 1].toInt() and 0xff) shl 8)
 }

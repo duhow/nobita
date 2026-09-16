@@ -106,10 +106,11 @@ class CaptureUserService : ICaptureUserService.Stub() {
         val output = File(directory, "Bluetooth_${System.currentTimeMillis()}.pcapng")
         try {
             var total = 0
+            val tracker = ConnectionTracker()
             raw.inputStream().use { input -> PcapngWriter(output.outputStream()).use { writer ->
-                BtsnoopReader.read(input).forEach { record -> writer.write(record); total++ }
+                BtsnoopReader.read(input).forEach { record -> tracker.connectionFor(record); writer.write(record); total++ }
             } }
-            lastExportSummary = "Packets: $total; target packets: $total; connections: all"
+            lastExportSummary = "Packets: $total; target packets: $total; connections: ${tracker.connectionCount()}"
             PcapngValidator.validate(output)
             raw.delete()
             return output.absolutePath
