@@ -11,7 +11,9 @@ import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.TextView
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import rikka.shizuku.Shizuku
@@ -22,6 +24,14 @@ class OnboardingActivity : AppCompatActivity() {
     private lateinit var bluetoothStatus: TextView
     private lateinit var notificationStatus: TextView
     private lateinit var batteryStatus: TextView
+    private lateinit var shizukuCheck: ImageView
+    private lateinit var bluetoothCheck: ImageView
+    private lateinit var notificationCheck: ImageView
+    private lateinit var batteryCheck: ImageView
+    private lateinit var shizukuAction: Button
+    private lateinit var bluetoothAction: Button
+    private lateinit var notificationAction: Button
+    private lateinit var batteryAction: Button
     private val shizukuPermissionResult = Shizuku.OnRequestPermissionResultListener { requestCode, _ ->
         if (requestCode == SHIZUKU_REQUEST) runOnUiThread { refresh() }
     }
@@ -40,10 +50,18 @@ class OnboardingActivity : AppCompatActivity() {
         bluetoothStatus = findViewById(R.id.onboarding_bluetooth_status)
         notificationStatus = findViewById(R.id.onboarding_notification_status)
         batteryStatus = findViewById(R.id.onboarding_battery_status)
-        findViewById<Button>(R.id.onboarding_shizuku).setOnClickListener { requestShizuku() }
-        findViewById<Button>(R.id.onboarding_bluetooth).setOnClickListener { requestBluetooth() }
-        findViewById<Button>(R.id.onboarding_notifications).setOnClickListener { requestNotifications() }
-        findViewById<Button>(R.id.onboarding_battery).setOnClickListener { openBatterySettings() }
+        shizukuCheck = findViewById(R.id.onboarding_shizuku_check)
+        bluetoothCheck = findViewById(R.id.onboarding_bluetooth_check)
+        notificationCheck = findViewById(R.id.onboarding_notification_check)
+        batteryCheck = findViewById(R.id.onboarding_battery_check)
+        shizukuAction = findViewById(R.id.onboarding_shizuku)
+        bluetoothAction = findViewById(R.id.onboarding_bluetooth)
+        notificationAction = findViewById(R.id.onboarding_notifications)
+        batteryAction = findViewById(R.id.onboarding_battery)
+        shizukuAction.setOnClickListener { requestShizuku() }
+        bluetoothAction.setOnClickListener { requestBluetooth() }
+        notificationAction.setOnClickListener { requestNotifications() }
+        batteryAction.setOnClickListener { openBatterySettings() }
         next.setOnClickListener { getPreferences(MODE_PRIVATE).edit().putBoolean(ONBOARDING_COMPLETE, true).apply(); openMain() }
         Shizuku.addBinderReceivedListener(shizukuBinderListener)
         Shizuku.addBinderDeadListener(shizukuDeadListener)
@@ -71,11 +89,20 @@ class OnboardingActivity : AppCompatActivity() {
     private fun refresh() {
         val shizukuReady = Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
         val bluetoothReady = bluetoothPermissionsGranted()
-        shizukuStatus.text = getString(if (shizukuReady) R.string.onboarding_available else R.string.onboarding_required)
-        bluetoothStatus.text = getString(if (bluetoothReady) R.string.onboarding_available else R.string.onboarding_required)
-        notificationStatus.text = getString(if (notificationPermissionGranted()) R.string.onboarding_available else R.string.onboarding_optional)
-        batteryStatus.text = getString(if (batteryExempt()) R.string.onboarding_available else R.string.onboarding_optional)
+        val notificationsReady = notificationPermissionGranted()
+        val batteryReady = batteryExempt()
+        setPermissionState(shizukuStatus, shizukuCheck, shizukuAction, shizukuReady, required = true)
+        setPermissionState(bluetoothStatus, bluetoothCheck, bluetoothAction, bluetoothReady, required = true)
+        setPermissionState(notificationStatus, notificationCheck, notificationAction, notificationsReady, required = false)
+        setPermissionState(batteryStatus, batteryCheck, batteryAction, batteryReady, required = false)
         next.isEnabled = shizukuReady && bluetoothReady
+    }
+
+    private fun setPermissionState(status: TextView, check: ImageView, action: Button, granted: Boolean, required: Boolean) {
+        check.visibility = if (granted) View.VISIBLE else View.GONE
+        status.visibility = if (granted) View.GONE else View.VISIBLE
+        if (!granted) status.text = getString(if (required) R.string.onboarding_required else R.string.onboarding_optional)
+        action.visibility = if (granted) View.GONE else View.VISIBLE
     }
 
     private fun requestShizuku() {

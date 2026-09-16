@@ -22,3 +22,4 @@
 - Fixed duplicate bugreport generation when exporting from the Activity and notification.
 - Fixed full capture export failures for controller-to-host packets.
 - Showed the processed packet count after full capture export.
+- Added visible export progress stages and clearer onboarding permission states.

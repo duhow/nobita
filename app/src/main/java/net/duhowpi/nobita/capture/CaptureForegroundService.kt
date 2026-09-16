@@ -18,6 +18,7 @@ import androidx.core.app.NotificationCompat
 import net.duhowpi.nobita.MainActivity
 import net.duhowpi.nobita.R
 import net.duhowpi.nobita.export.CaptureFileStore
+import java.util.concurrent.atomic.AtomicBoolean
 
 class CaptureForegroundService : Service() {
     private val binderDead = Shizuku.OnBinderDeadListener {
@@ -78,7 +79,20 @@ class CaptureForegroundService : Service() {
                     try {
                         val boundService = ICaptureUserService.Stub.asInterface(binder)
                         service = boundService
-                        val path = boundService.exportPcapng(target, false, session.previousMode, session.previousDefaultMode, session.propertyModeChanged, session.bluetoothInitiallyEnabled)
+                        val exportCompleted = AtomicBoolean(false)
+                        val progress = Thread {
+                            while (!exportCompleted.get()) {
+                                updateNotification(boundService.getExportProgress())
+                                try { Thread.sleep(1_000) } catch (_: InterruptedException) { break }
+                            }
+                        }
+                        progress.start()
+                        val path = try {
+                            boundService.exportPcapng(target, false, session.previousMode, session.previousDefaultMode, session.propertyModeChanged, session.bluetoothInitiallyEnabled)
+                        } finally {
+                            exportCompleted.set(true)
+                            progress.interrupt()
+                        }
                         CaptureFileStore.importPcapng(this@CaptureForegroundService, path)
                         success = true
                         updateNotification("${boundService.getLastExportSummary()} — exported to Downloads/BluetoothCaptures")
@@ -129,5 +143,5 @@ class CaptureForegroundService : Service() {
         val seconds = ((System.currentTimeMillis() - session.startedAt) / 1000).coerceAtLeast(0)
         return "Target: $target • ${seconds / 60}m ${seconds % 60}s"
     }
-    companion object { private const val CHANNEL = "capture"; private const val ID = 42; private const val USER_SERVICE_VERSION = 3; const val ACTION_STOP = "net.duhowpi.nobita.STOP"; const val ACTION_EXPORTING = "net.duhowpi.nobita.EXPORTING" }
+    companion object { private const val CHANNEL = "capture"; private const val ID = 42; private const val USER_SERVICE_VERSION = 4; const val ACTION_STOP = "net.duhowpi.nobita.STOP"; const val ACTION_EXPORTING = "net.duhowpi.nobita.EXPORTING" }
 }

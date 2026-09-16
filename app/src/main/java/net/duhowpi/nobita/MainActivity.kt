@@ -35,6 +35,7 @@ import net.duhowpi.nobita.capture.TargetHistory
 import net.duhowpi.nobita.shizuku.CaptureUserService
 import net.duhowpi.nobita.shizuku.ICaptureUserService
 import net.duhowpi.nobita.export.CaptureFileStore
+import java.util.concurrent.atomic.AtomicBoolean
 
 class MainActivity : AppCompatActivity() {
     @Volatile private var userService: ICaptureUserService? = null
@@ -152,7 +153,20 @@ class MainActivity : AppCompatActivity() {
                 val session = CaptureSession.load(this) ?: error("No active capture session")
                 val exported = withWakeLock {
                     val service = requireUserService()
-                    service.exportPcapng(target, saveRaw, session.previousMode, session.previousDefaultMode, session.propertyModeChanged, session.bluetoothInitiallyEnabled) to service.getLastExportSummary()
+                    val finished = AtomicBoolean(false)
+                    val progress = Thread {
+                        while (!finished.get()) {
+                            runOnUiThread { status.text = "${getString(R.string.capture_exporting_top)}\n${service.getExportProgress()}" }
+                            try { Thread.sleep(1_000) } catch (_: InterruptedException) { break }
+                        }
+                    }
+                    progress.start()
+                    try {
+                        service.exportPcapng(target, saveRaw, session.previousMode, session.previousDefaultMode, session.propertyModeChanged, session.bluetoothInitiallyEnabled) to service.getLastExportSummary()
+                    } finally {
+                        finished.set(true)
+                        progress.interrupt()
+                    }
                 }
                 val uri = CaptureFileStore.importPcapng(this, exported.first)
                 runOnUiThread {
@@ -189,7 +203,20 @@ class MainActivity : AppCompatActivity() {
                 val session = CaptureSession.load(this) ?: error("No pending capture session")
                 val exported = withWakeLock {
                     val service = requireUserService()
-                    service.exportFullCapture(session.previousMode, session.previousDefaultMode, session.propertyModeChanged, session.bluetoothInitiallyEnabled) to service.getLastExportSummary()
+                    val finished = AtomicBoolean(false)
+                    val progress = Thread {
+                        while (!finished.get()) {
+                            runOnUiThread { status.text = "${getString(R.string.capture_exporting_top)}\n${service.getExportProgress()}" }
+                            try { Thread.sleep(1_000) } catch (_: InterruptedException) { break }
+                        }
+                    }
+                    progress.start()
+                    try {
+                        service.exportFullCapture(session.previousMode, session.previousDefaultMode, session.propertyModeChanged, session.bluetoothInitiallyEnabled) to service.getLastExportSummary()
+                    } finally {
+                        finished.set(true)
+                        progress.interrupt()
+                    }
                 }
                 val uri = CaptureFileStore.importPcapng(this, exported.first)
                 runOnUiThread { CaptureSession.clear(this); exportedUri = uri; showCaptureComplete(exported.second); status.text = "Full capture complete: ${exported.second}"; findViewById<Button>(R.id.export_full).visibility = android.view.View.GONE; findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE; resetButtons() }
@@ -394,5 +421,5 @@ class MainActivity : AppCompatActivity() {
         return try { block() } finally { if (lock.isHeld) lock.release() }
     }
 
-    companion object { private const val SHIZUKU_REQUEST = 100; private const val USER_SERVICE_VERSION = 3 }
+    companion object { private const val SHIZUKU_REQUEST = 100; private const val USER_SERVICE_VERSION = 4 }
 }

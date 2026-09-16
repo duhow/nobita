@@ -24,6 +24,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
     private var propertyModeChanged = false
     private var bluetoothInitiallyEnabled = false
     private var lastExportSummary = ""
+    @Volatile private var exportProgress = "Preparing export…"
 
     @Keep
     fun destroy() {
@@ -41,6 +42,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
     }
 
     override fun exportPcapng(target: String, saveRaw: Boolean, previousMode: String, previousDefaultMode: String, propertyModeChanged: Boolean, bluetoothInitiallyEnabled: Boolean): String {
+        exportProgress = "Generating bugreport…"
         this.previousMode = previousMode
         this.previousDefaultMode = previousDefaultMode
         this.propertyModeChanged = propertyModeChanged
@@ -56,6 +58,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
             val path = lines.firstOrNull { it.startsWith("OK:") }?.removePrefix("OK:")?.trim()
                 ?: error(lines.lastOrNull { it.startsWith("FAIL:") } ?: "bugreportz did not complete")
             bugreport = File(path)
+            exportProgress = "Extracting BTSnoop…"
             val rawFile = File.createTempFile("nobita-", ".btsnoop", File("/data/local/tmp"))
             raw = rawFile
             ZipFile(path).use { zip ->
@@ -78,6 +81,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
             var total = 0
             val handles = mutableSetOf<Int>()
             var attPackets = 0
+            exportProgress = "Converting packets…"
             rawFile.inputStream().use { input -> PcapngWriter(generated.outputStream()).use { writer ->
                 val tracker = ConnectionTracker()
                 for (record in BtsnoopReader.read(input)) {
@@ -91,6 +95,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
             lastExportSummary = "Capture: $captureType; target: ${target.ifBlank { "All devices" }}; packets: $total; target packets: $written; connections: ${handles.size}; handles: ${formatHandles(handles)}; ATT packets: $attPackets"
             if (target.isNotBlank() && written == 0) error("No packets matched target; raw capture preserved for full export")
             PcapngValidator.validate(generated)
+            exportProgress = "Finishing export…"
             if (saveRaw) rawFile.copyTo(File(directory, "${base}_$stamp.btsnoop"), overwrite = true)
             converted = true
             return generated.absolutePath
@@ -105,6 +110,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
     }
 
     override fun exportFullCapture(previousMode: String, previousDefaultMode: String, propertyModeChanged: Boolean, bluetoothInitiallyEnabled: Boolean): String {
+        exportProgress = "Converting full capture…"
         this.previousMode = previousMode
         this.previousDefaultMode = previousDefaultMode
         this.propertyModeChanged = propertyModeChanged
@@ -127,6 +133,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
             } }
             lastExportSummary = "Packets: $total; target packets: $total; connections: ${tracker.connectionCount()}; handles: ${formatHandles(tracker.connectionHandles())}; ATT packets: $attPackets"
             PcapngValidator.validate(output)
+            exportProgress = "Finishing export…"
             raw.delete()
             return output.absolutePath
         } finally {
@@ -136,6 +143,8 @@ class CaptureUserService : ICaptureUserService.Stub() {
     }
 
     override fun getLastExportSummary(): String = lastExportSummary
+
+    override fun getExportProgress(): String = exportProgress
 
     override fun hasPendingCapture(): Boolean = captureDirectory()
         .listFiles { file -> file.name.startsWith(".pending-") && file.name.endsWith(".btsnoop") }
