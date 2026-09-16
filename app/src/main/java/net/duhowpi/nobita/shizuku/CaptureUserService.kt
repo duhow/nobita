@@ -8,12 +8,14 @@ import java.util.zip.ZipFile
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.annotation.Keep
 import net.duhowpi.nobita.btsnoop.BtsnoopReader
 import net.duhowpi.nobita.hci.ConnectionTracker
 import net.duhowpi.nobita.hci.PacketFilter
 import net.duhowpi.nobita.pcapng.PcapngWriter
 import net.duhowpi.nobita.pcapng.PcapngValidator
 
+@Keep
 class CaptureUserService : ICaptureUserService.Stub() {
     private var previousMode: String? = null
     private var bluetoothInitiallyEnabled = false
@@ -24,7 +26,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
         bluetoothInitiallyEnabled = command("settings", "get", "global", "bluetooth_on").trim() == "1"
         command("setprop", "persist.bluetooth.btsnooplogmode", "full")
         check(command("getprop", "persist.bluetooth.btsnooplogmode").trim() == "full") { "Bluetooth snoop mode was rejected" }
-        restartBluetooth()
+        if (bluetoothInitiallyEnabled) restartBluetooth()
         return "uid=${Process.myUid()} mode=full previous=$previousMode initialBluetooth=$bluetoothInitiallyEnabled"
     }
 

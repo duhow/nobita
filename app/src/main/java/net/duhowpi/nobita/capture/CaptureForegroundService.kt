@@ -15,6 +15,7 @@ import net.duhowpi.nobita.shizuku.ICaptureUserService
 import androidx.core.app.NotificationCompat
 import net.duhowpi.nobita.MainActivity
 import net.duhowpi.nobita.R
+import net.duhowpi.nobita.export.CaptureFileStore
 
 class CaptureForegroundService : Service() {
     override fun onCreate() {
@@ -50,7 +51,10 @@ class CaptureForegroundService : Service() {
         try { Shizuku.bindUserService(userServiceArgs(), object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
                 Thread {
-                    try { ICaptureUserService.Stub.asInterface(binder).exportPcapng(target, false, session.previousMode, session.bluetoothInitiallyEnabled) }
+                    try {
+                        val path = ICaptureUserService.Stub.asInterface(binder).exportPcapng(target, false, session.previousMode, session.bluetoothInitiallyEnabled)
+                        CaptureFileStore.importPcapng(this@CaptureForegroundService, path)
+                    }
                     finally {
                         if (wakeLock.isHeld) wakeLock.release()
                         Shizuku.unbindUserService(userServiceArgs(), this, true)

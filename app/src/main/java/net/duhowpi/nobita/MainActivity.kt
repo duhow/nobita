@@ -10,8 +10,7 @@ import android.content.pm.PackageManager
 import android.widget.Button
 import android.widget.TextView
 import android.widget.LinearLayout
-import androidx.core.content.FileProvider
-import java.io.File
+import android.net.Uri
 import android.os.PowerManager
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
@@ -27,10 +26,11 @@ import net.duhowpi.nobita.capture.CaptureForegroundService
 import net.duhowpi.nobita.capture.CaptureSession
 import net.duhowpi.nobita.shizuku.CaptureUserService
 import net.duhowpi.nobita.shizuku.ICaptureUserService
+import net.duhowpi.nobita.export.CaptureFileStore
 
 class MainActivity : AppCompatActivity() {
     private var userService: ICaptureUserService? = null
-    private var exportedFile: File? = null
+    private var exportedUri: Uri? = null
     private lateinit var status: TextView
     private val binderReceived = Shizuku.OnBinderReceivedListener { if (!isFinishing) bindUserService() }
     private val binderDead = Shizuku.OnBinderDeadListener { runOnUiThread { status.text = "Capture degraded: Shizuku stopped. Bluetooth logging may still be active; open Shizuku before exporting." } }
@@ -103,7 +103,7 @@ class MainActivity : AppCompatActivity() {
                 val session = CaptureSession.load(this) ?: error("No active capture session")
                 val path = withWakeLock { userService?.exportPcapng(target, saveRaw, session.previousMode, session.bluetoothInitiallyEnabled) ?: error("Shizuku UserService is not connected") }
                 runOnUiThread {
-                    CaptureSession.clear(this); exportedFile = File(path)
+                    CaptureSession.clear(this); exportedUri = CaptureFileStore.importPcapng(this, path)
                     status.text = "PCAPNG exported: $path"; stopService(Intent(this, CaptureForegroundService::class.java)); resetButtons()
                     findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE
                 }
@@ -116,8 +116,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.stop_export).visibility = android.view.View.GONE
     }
     private fun openOrShare(share: Boolean) {
-        val file = exportedFile ?: return
-        val uri = FileProvider.getUriForFile(this, "${BuildConfig.APPLICATION_ID}.files", file)
+        val uri = exportedUri ?: return
         val intent = if (share) Intent(Intent.ACTION_SEND).apply { type = "application/vnd.tcpdump.pcap"; putExtra(Intent.EXTRA_STREAM, uri) }
             else Intent(Intent.ACTION_VIEW).apply { type = "application/vnd.tcpdump.pcap"; setData(uri) }
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
