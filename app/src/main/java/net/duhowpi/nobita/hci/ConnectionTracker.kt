@@ -27,7 +27,7 @@ class ConnectionTracker {
             }
             parseEvent(packet)
             return when (event) {
-                0x03 -> if (packet.size >= 6) connections[readLe16(packet, 4)] else null
+                0x03 -> if (packet.size >= 6) connections[readLe16(packet, 4) and 0x0fff] else null
                 0x07 -> if (packet.size >= 10) {
                     val address = address(packet, 4)
                     connections.values.firstOrNull { it.address == address }
@@ -48,7 +48,7 @@ class ConnectionTracker {
         when (packet[1].toInt() and 0xff) {
             0x03 -> if (packet.size >= 12) {
                 val address = address(packet, 6)
-                val handle = readLe16(packet, 4)
+                val handle = readLe16(packet, 4) and 0x0fff
                 pendingClassicAddresses.remove(address)
                 seenHandles += handle
                 connections[handle] = Connection(handle, address, names[address], Transport.CLASSIC)
