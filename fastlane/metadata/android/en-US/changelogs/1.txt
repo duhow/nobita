@@ -2,3 +2,5 @@
 - Added local Shizuku-backed Bluetooth HCI capture and PCAPNG export.
 - Added paired and nearby device selection plus optional raw BTSnoop retention.
 - Added safe full-capture fallback when target filtering finds no packets.
+- Fixed startup crashes when connecting to Shizuku.
+- Added packet and connection counts to export results.
