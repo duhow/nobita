@@ -5,7 +5,13 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.content.ComponentName
+import android.content.ServiceConnection
 import android.os.IBinder
+import android.os.PowerManager
+import dev.rikka.shizuku.Shizuku
+import net.duhowpi.nobita.shizuku.CaptureUserService
+import net.duhowpi.nobita.shizuku.ICaptureUserService
 import androidx.core.app.NotificationCompat
 import net.duhowpi.nobita.MainActivity
 import net.duhowpi.nobita.R
@@ -19,10 +25,33 @@ class CaptureForegroundService : Service() {
         startForeground(ID, notification())
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) stopSelf()
+        if (intent?.action == ACTION_STOP) startExport()
         return START_NOT_STICKY
     }
     override fun onBind(intent: Intent?): IBinder? = null
+    private fun startExport() {
+        val target = CaptureSession.load(this)?.target.orEmpty()
+        if (!Shizuku.pingBinder()) { stopSelf(); return }
+        val wakeLock = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Nobita:export").apply { setReferenceCounted(false); acquire(30 * 60 * 1000L) }
+        try { Shizuku.bindUserService(userServiceArgs(), object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+                Thread {
+                    try { ICaptureUserService.Stub.asInterface(binder).exportPcapng(target) }
+                    finally {
+                        if (wakeLock.isHeld) wakeLock.release()
+                        Shizuku.unbindUserService(userServiceArgs(), this, true)
+                        CaptureSession.clear(this@CaptureForegroundService)
+                        stopSelf()
+                    }
+                }.start()
+            }
+            override fun onServiceDisconnected(name: ComponentName?) { stopSelf() }
+        }) } catch (error: RuntimeException) {
+            if (wakeLock.isHeld) wakeLock.release()
+            stopSelf()
+        }
+    }
+    private fun userServiceArgs() = Shizuku.UserServiceArgs(ComponentName(this, CaptureUserService::class.java)).daemon(true).tag("bluetooth-capture").version(1)
     private fun notification() = NotificationCompat.Builder(this, CHANNEL)
         .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
         .setContentTitle(getString(R.string.capture_active))

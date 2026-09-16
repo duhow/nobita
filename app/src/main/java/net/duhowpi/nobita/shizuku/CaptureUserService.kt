@@ -9,6 +9,7 @@ import net.duhowpi.nobita.btsnoop.BtsnoopReader
 import net.duhowpi.nobita.hci.ConnectionTracker
 import net.duhowpi.nobita.hci.PacketFilter
 import net.duhowpi.nobita.pcapng.PcapngWriter
+import net.duhowpi.nobita.pcapng.PcapngValidator
 
 class CaptureUserService : ICaptureUserService.Stub() {
     private var previousMode: String? = null
@@ -46,6 +47,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
                     if (PacketFilter.matches(record, connection, target)) writer.write(record)
                 }
             } }
+            PcapngValidator.validate(output)
             return output.absolutePath
         } finally {
             raw.delete()
