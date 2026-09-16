@@ -7,4 +7,6 @@
     <string name="capture_active">Bluetooth capture active</string>
     <string name="capture_notification_text">All Bluetooth HCI traffic is being recorded locally.</string>
     <string name="shizuku_not_ready">Shizuku is not running or not authorized.</string>
+    <string name="open_capture">Open</string>
+    <string name="share_capture">Share</string>
 </resources>

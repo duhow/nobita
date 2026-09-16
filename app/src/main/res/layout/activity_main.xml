@@ -46,4 +46,13 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp" />
+
+    <LinearLayout
+        android:id="@+id/export_actions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone">
+        <Button android:id="@+id/open_capture" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/open_capture" />
+        <Button android:id="@+id/share_capture" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/share_capture" />
+    </LinearLayout>
 </LinearLayout>

@@ -29,28 +29,32 @@ class CaptureUserService : ICaptureUserService.Stub() {
         val path = lines.firstOrNull { it.startsWith("OK:") }?.removePrefix("OK:")?.trim()
             ?: error(lines.lastOrNull { it.startsWith("FAIL:") } ?: "bugreportz did not complete")
         val raw = File.createTempFile("nobita-", ".btsnoop", File("/data/local/tmp"))
-        ZipFile(path).use { zip ->
-            val entry = zip.entries().asSequence().filter { !it.isDirectory }
-                .map { it to score(it.name) }.filter { it.second > 0 }
-                .maxByOrNull { it.second }?.first ?: error("No BTSnoop file found")
-            zip.getInputStream(entry).use { input -> raw.outputStream().use { input.copyTo(it) } }
-        }
-        File(path).delete()
-        val directory = File("/sdcard/Download/BluetoothCaptures").apply { mkdirs() }
-        val output = File(directory, "capture-${System.currentTimeMillis()}.pcapng")
-        raw.inputStream().use { input -> PcapngWriter(output.outputStream()).use { writer ->
-            val tracker = ConnectionTracker()
-            for (record in BtsnoopReader.read(input)) {
-                val connection = tracker.connectionFor(record)
-                if (PacketFilter.matches(record, connection, target)) writer.write(record)
+        try {
+            ZipFile(path).use { zip ->
+                val entry = zip.entries().asSequence().filter { !it.isDirectory }
+                    .map { it to score(it.name) }.filter { it.second > 0 }
+                    .maxByOrNull { it.second }?.first ?: error("No BTSnoop file found")
+                zip.getInputStream(entry).use { input -> raw.outputStream().use { input.copyTo(it) } }
             }
-        } }
-        raw.delete()
-        restoreCaptureEnvironment()
-        return output.absolutePath
+            File(path).delete()
+            val directory = File("/sdcard/Download/BluetoothCaptures").apply { mkdirs() }
+            val output = File(directory, "capture-${System.currentTimeMillis()}.pcapng")
+            raw.inputStream().use { input -> PcapngWriter(output.outputStream()).use { writer ->
+                val tracker = ConnectionTracker()
+                for (record in BtsnoopReader.read(input)) {
+                    val connection = tracker.connectionFor(record)
+                    if (PacketFilter.matches(record, connection, target)) writer.write(record)
+                }
+            } }
+            return output.absolutePath
+        } finally {
+            raw.delete()
+            restoreCaptureEnvironment()
+        }
     }
 
     override fun restoreCaptureEnvironment() {
+        if (previousMode == null) return
         previousMode?.let { command("setprop", "persist.bluetooth.btsnooplogmode", it) }
         if (bluetoothInitiallyEnabled) restartBluetooth() else command("cmd", "bluetooth_manager", "disable")
     }

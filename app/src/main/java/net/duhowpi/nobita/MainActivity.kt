@@ -9,16 +9,22 @@ import android.os.Build
 import android.content.pm.PackageManager
 import android.widget.Button
 import android.widget.TextView
+import android.widget.LinearLayout
+import androidx.core.content.FileProvider
+import java.io.File
+import android.os.PowerManager
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import dev.rikka.shizuku.Shizuku
 import net.duhowpi.nobita.capture.CaptureForegroundService
+import net.duhowpi.nobita.capture.CaptureSession
 import net.duhowpi.nobita.shizuku.CaptureUserService
 import net.duhowpi.nobita.shizuku.ICaptureUserService
 
 class MainActivity : AppCompatActivity() {
     private var userService: ICaptureUserService? = null
+    private var exportedFile: File? = null
     private lateinit var status: TextView
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -35,6 +41,14 @@ class MainActivity : AppCompatActivity() {
         requestNotifications()
         findViewById<Button>(R.id.start_capture).setOnClickListener { startCapture() }
         findViewById<Button>(R.id.stop_export).setOnClickListener { stopAndExport() }
+        findViewById<Button>(R.id.open_capture).setOnClickListener { openOrShare(false) }
+        findViewById<Button>(R.id.share_capture).setOnClickListener { openOrShare(true) }
+        CaptureSession.load(this)?.let { session ->
+            findViewById<android.widget.EditText>(R.id.target).setText(session.target)
+            status.text = "Capture active (${elapsed(session.startedAt)})"
+            findViewById<Button>(R.id.start_capture).visibility = android.view.View.GONE
+            findViewById<Button>(R.id.stop_export).visibility = android.view.View.VISIBLE
+        }
         if (Shizuku.pingBinder()) bindUserService() else status.text = getString(R.string.shizuku_not_ready)
     }
 
@@ -50,14 +64,18 @@ class MainActivity : AppCompatActivity() {
         }
         Thread {
             try {
-                val result = userService?.prepareCapture() ?: error("Shizuku UserService is not connected")
+                val result = withWakeLock { userService?.prepareCapture() ?: error("Shizuku UserService is not connected") }
                 runOnUiThread {
+                    CaptureSession(System.currentTimeMillis(), findViewById<android.widget.EditText>(R.id.target).text.toString()).save(this)
                     status.text = "Capture active: $result"
                     ContextCompat.startForegroundService(this, Intent(this, CaptureForegroundService::class.java))
                     findViewById<Button>(R.id.start_capture).visibility = android.view.View.GONE
                     findViewById<Button>(R.id.stop_export).visibility = android.view.View.VISIBLE
                 }
-            } catch (error: Exception) { runOnUiThread { status.text = error.message ?: "Capture preparation failed" } }
+            } catch (error: Exception) {
+                runCatching { userService?.restoreCaptureEnvironment() }
+                runOnUiThread { CaptureSession.clear(this); status.text = error.message ?: "Capture preparation failed" }
+            }
         }.start()
     }
 
@@ -65,15 +83,27 @@ class MainActivity : AppCompatActivity() {
         Thread {
             try {
                 val target = findViewById<android.widget.EditText>(R.id.target).text.toString()
-                val path = userService?.exportPcapng(target) ?: error("Shizuku UserService is not connected")
-                runOnUiThread { status.text = "BTSnoop extracted: $path"; stopService(Intent(this, CaptureForegroundService::class.java)); resetButtons() }
-            } catch (error: Exception) { runOnUiThread { status.text = error.message ?: "Export failed"; resetButtons() } }
+                val path = withWakeLock { userService?.exportPcapng(target) ?: error("Shizuku UserService is not connected") }
+                runOnUiThread {
+                    CaptureSession.clear(this); exportedFile = File(path)
+                    status.text = "PCAPNG exported: $path"; stopService(Intent(this, CaptureForegroundService::class.java)); resetButtons()
+                    findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE
+                }
+            } catch (error: Exception) { runOnUiThread { CaptureSession.clear(this); status.text = error.message ?: "Export failed"; stopService(Intent(this, CaptureForegroundService::class.java)); resetButtons() } }
         }.start()
     }
 
     private fun resetButtons() {
         findViewById<Button>(R.id.start_capture).visibility = android.view.View.VISIBLE
         findViewById<Button>(R.id.stop_export).visibility = android.view.View.GONE
+    }
+    private fun openOrShare(share: Boolean) {
+        val file = exportedFile ?: return
+        val uri = FileProvider.getUriForFile(this, "${BuildConfig.APPLICATION_ID}.files", file)
+        val intent = if (share) Intent(Intent.ACTION_SEND).apply { type = "application/vnd.tcpdump.pcap"; putExtra(Intent.EXTRA_STREAM, uri) }
+            else Intent(Intent.ACTION_VIEW).apply { type = "application/vnd.tcpdump.pcap"; setData(uri) }
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        startActivity(Intent.createChooser(intent, if (share) getString(R.string.share_capture) else getString(R.string.open_capture)))
     }
 
     private fun bindUserService() { Shizuku.bindUserService(userServiceArgs(), connection) }
@@ -82,6 +112,12 @@ class MainActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf("android.permission.POST_NOTIFICATIONS"), 20)
         }
+    }
+    private fun elapsed(startedAt: Long): String = "${((System.currentTimeMillis() - startedAt) / 1000)}s"
+    private fun <T> withWakeLock(block: () -> T): T {
+        val power = getSystemService(PowerManager::class.java)
+        val lock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Nobita:capture").apply { setReferenceCounted(false); acquire(10 * 60 * 1000L) }
+        return try { block() } finally { if (lock.isHeld) lock.release() }
     }
 
     companion object { private const val SHIZUKU_REQUEST = 100 }
