@@ -68,7 +68,6 @@ class CaptureForegroundService : Service() {
         notificationHandler.removeCallbacks(notificationUpdater)
         val session = CaptureSession.load(this) ?: run { stopSelf(); return }
         session.copy(stage = CaptureStage.EXPORTING).save(this)
-        val target = session.target
         if (!Shizuku.pingBinder()) { stopSelf(); return }
         val wakeLock = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Nobita:export").apply { setReferenceCounted(false); acquire(30 * 60 * 1000L) }
         try { Shizuku.bindUserService(userServiceArgs(), object : ServiceConnection {

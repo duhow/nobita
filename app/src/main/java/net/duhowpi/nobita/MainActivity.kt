@@ -232,7 +232,7 @@ class MainActivity : AppCompatActivity() {
                     }
                     progress.start()
                     try {
-                        service.exportFullCapture() to service.getLastExportSummary()
+                        service.exportFullCapture(session.captureId) to service.getLastExportSummary()
                     } finally {
                         finished.set(true)
                         progress.interrupt()

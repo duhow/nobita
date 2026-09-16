@@ -147,10 +147,11 @@ class CaptureUserService : ICaptureUserService.Stub() {
         }
     }
 
-    override fun exportFullCapture(): String {
+    override fun exportFullCapture(captureId: String): String {
+        require(captureId.matches(Regex("[0-9a-f]{32}"))) { "Invalid capture ID" }
         exportProgress = "Converting full capture…"
-        val raw = captureDirectory().listFiles { file -> file.name.startsWith(".pending-") && file.name.endsWith(".btsnoop") }
-            ?.maxByOrNull { it.lastModified() } ?: error("No pending raw capture is available")
+        val raw = File(captureDirectory(), ".pending-$captureId.btsnoop")
+        check(raw.isFile) { "No pending raw capture is available for $captureId" }
         val output = File(captureDirectory(), "Bluetooth_${System.currentTimeMillis()}.pcapng")
         try {
             var total = 0
