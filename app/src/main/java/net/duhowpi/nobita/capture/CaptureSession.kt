@@ -12,6 +12,12 @@ data class CaptureSession(
     val exportPending: Boolean = false,
     val stage: CaptureStage = CaptureStage.CAPTURING,
 ) {
+    fun state(): CaptureState = when (stage) {
+        CaptureStage.CAPTURING -> CaptureState.Capturing(startedAt, target)
+        CaptureStage.EXPORTING -> CaptureState.GeneratingBugreport
+        CaptureStage.EXPORT_PENDING -> CaptureState.ExportPending
+    }
+
     fun save(context: Context) = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit()
         .putLong(KEY_STARTED, startedAt).putString(KEY_TARGET, target).putString(KEY_MODE, previousMode)
         .putBoolean(KEY_BLUETOOTH, bluetoothInitiallyEnabled)

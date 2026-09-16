@@ -9,6 +9,7 @@ sealed interface CaptureState {
     data object Parsing : CaptureState
     data object Filtering : CaptureState
     data object WritingPcapng : CaptureState
+    data object ExportPending : CaptureState
     data class Completed(val output: String) : CaptureState
     data class Failed(val stage: String, val message: String) : CaptureState
 }

@@ -27,6 +27,7 @@ import rikka.shizuku.Shizuku
 import net.duhowpi.nobita.capture.CaptureForegroundService
 import net.duhowpi.nobita.capture.CaptureSession
 import net.duhowpi.nobita.capture.CaptureStage
+import net.duhowpi.nobita.capture.CaptureState
 import net.duhowpi.nobita.capture.TargetHistory
 import net.duhowpi.nobita.shizuku.CaptureUserService
 import net.duhowpi.nobita.shizuku.ICaptureUserService
@@ -71,7 +72,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.share_capture).setOnClickListener { openOrShare(true) }
         CaptureSession.load(this)?.let { session ->
             findViewById<android.widget.EditText>(R.id.target).setText(session.target)
-            val pending = session.exportPending || session.stage == CaptureStage.EXPORT_PENDING
+            val pending = session.exportPending || session.state() is CaptureState.ExportPending
             status.text = if (pending) "Capture export pending: choose full export" else "Capture active (${elapsed(session.startedAt)})"
             findViewById<Button>(R.id.start_capture).visibility = android.view.View.GONE
             findViewById<Button>(R.id.stop_export).visibility = if (pending) android.view.View.GONE else android.view.View.VISIBLE
