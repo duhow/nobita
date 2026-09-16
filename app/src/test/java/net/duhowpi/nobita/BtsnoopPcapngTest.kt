@@ -31,6 +31,16 @@ class BtsnoopPcapngTest {
         file.delete()
     }
 
+    @Test fun normalizesOutOfOrderPacketTimestamps() {
+        val file = Files.createTempFile("nobita-test", ".pcapng").toFile()
+        PcapngWriter(file.outputStream()).use {
+            it.write(BtsnoopRecord(3, 0, 2_000_000, byteArrayOf(0x01, 0x01, 0x00)))
+            it.write(BtsnoopRecord(3, 1, 1_000_000, byteArrayOf(0x04, 0x0e, 0x00)))
+        }
+        PcapngValidator.validate(file)
+        file.delete()
+    }
+
     @Test fun rejectsInvalidDirectionPseudoHeader() {
         val file = Files.createTempFile("nobita-test", ".pcapng").toFile()
         val bytes = ByteArrayOutputStream()

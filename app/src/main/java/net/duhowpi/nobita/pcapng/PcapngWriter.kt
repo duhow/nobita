@@ -4,6 +4,8 @@ import net.duhowpi.nobita.btsnoop.BtsnoopRecord
 import java.io.OutputStream
 
 class PcapngWriter(private val output: OutputStream) : AutoCloseable {
+    private var lastTimestampMicros = Long.MIN_VALUE
+
     init {
         writeSectionHeader()
         writeInterfaceDescription()
@@ -14,13 +16,18 @@ class PcapngWriter(private val output: OutputStream) : AutoCloseable {
             0, 0, 0, (if (record.controllerToHost) 1 else 0).toByte(),
         )
         val packet = pseudoHeader + record.packet
+        // Android BTSnoop logs can contain records from concurrent stack paths
+        // with a slightly earlier timestamp. Keep the capture order while
+        // emitting the non-decreasing timeline required by our validator.
+        val timestampMicros = maxOf(record.timestampMicros, lastTimestampMicros)
+        lastTimestampMicros = timestampMicros
         val paddedLength = (packet.size + 3) and -4
         val totalLength = 32 + paddedLength
         writeInt(0x00000006)
         writeInt(totalLength)
         writeInt(0) // interface id
-        writeInt((record.timestampMicros ushr 32).toInt())
-        writeInt(record.timestampMicros.toInt())
+        writeInt((timestampMicros ushr 32).toInt())
+        writeInt(timestampMicros.toInt())
         writeInt(packet.size)
         writeInt(record.originalLength + 4)
         output.write(packet)
