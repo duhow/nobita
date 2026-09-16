@@ -9,7 +9,7 @@ import android.content.ComponentName
 import android.content.ServiceConnection
 import android.os.IBinder
 import android.os.PowerManager
-import dev.rikka.shizuku.Shizuku
+import rikka.shizuku.Shizuku
 import net.duhowpi.nobita.shizuku.CaptureUserService
 import net.duhowpi.nobita.shizuku.ICaptureUserService
 import androidx.core.app.NotificationCompat

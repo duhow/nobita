@@ -22,7 +22,7 @@ import android.provider.Settings
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import dev.rikka.shizuku.Shizuku
+import rikka.shizuku.Shizuku
 import net.duhowpi.nobita.capture.CaptureForegroundService
 import net.duhowpi.nobita.capture.CaptureSession
 import net.duhowpi.nobita.capture.TargetHistory
