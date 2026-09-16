@@ -11,6 +11,9 @@
     <string name="capture_complete_top">Capture complete</string>
     <string name="capture_notification_text">All Bluetooth HCI traffic is being recorded locally.</string>
     <string name="capture_degraded">Capture stopped: Shizuku stopped the live Bluetooth stream. Complete packets may be recoverable.</string>
+    <string name="capture_interrupted">Capture interrupted: %1$s (%2$d bytes)</string>
+    <string name="capture_active_progress">Capture active: %1$d bytes%2$s</string>
+    <string name="capture_recovered">Capture interrupted; full capture is available</string>
     <string name="shizuku_not_ready">Shizuku is not running or not authorized.</string>
     <string name="open_capture">Open</string>
     <string name="share_capture">Share</string>

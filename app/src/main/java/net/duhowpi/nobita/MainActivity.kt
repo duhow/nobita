@@ -279,9 +279,9 @@ class MainActivity : AppCompatActivity() {
         }
     }.getOrNull()
     private fun captureStatusText(value: CaptureStatusView): String = if (value.state == "INTERRUPTED") {
-        "Capture interrupted: ${value.reason ?: "unknown"} (${value.bytes} bytes)"
+        getString(R.string.capture_interrupted, value.reason ?: "unknown", value.bytes)
     } else {
-        "Capture active: ${value.bytes} bytes${if (value.lastDataAt > 0) ", last data ${value.lastDataAt}" else ""}"
+        getString(R.string.capture_active_progress, value.bytes, if (value.lastDataAt > 0) ", last data ${value.lastDataAt}" else "")
     }
     private data class CaptureStatusView(val state: String, val bytes: Long, val lastDataAt: Long, val reason: String?)
     private fun showCaptureActive() {
@@ -347,7 +347,7 @@ class MainActivity : AppCompatActivity() {
                     CaptureSession.clear(this)
                     session.copy(exportPending = true, stage = CaptureStage.EXPORT_PENDING).save(this)
                     showCaptureIdle(getString(R.string.capture_exporting_top))
-                    status.text = "Capture interrupted; full capture is available"
+                    status.text = getString(R.string.capture_recovered)
                     findViewById<Button>(R.id.start_capture).visibility = android.view.View.GONE
                     findViewById<Button>(R.id.stop_export).visibility = android.view.View.GONE
                     findViewById<Button>(R.id.export_full).visibility = android.view.View.VISIBLE
