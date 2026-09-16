@@ -15,4 +15,5 @@
     <string name="no_nearby_devices">No nearby Bluetooth devices found.</string>
     <string name="save_raw">Save raw BTSnoop too</string>
     <string name="export_full">Export full capture</string>
+    <string name="battery_settings">Battery optimization settings</string>
 </resources>

@@ -18,6 +18,7 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.app.AlertDialog
+import android.provider.Settings
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -54,6 +55,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.export_full).setOnClickListener { exportFullCapture() }
         findViewById<Button>(R.id.choose_paired).setOnClickListener { choosePairedDevice() }
         findViewById<Button>(R.id.scan_nearby).setOnClickListener { scanNearby() }
+        findViewById<Button>(R.id.battery_settings).setOnClickListener { startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
         findViewById<Button>(R.id.open_capture).setOnClickListener { openOrShare(false) }
         findViewById<Button>(R.id.share_capture).setOnClickListener { openOrShare(true) }
         CaptureSession.load(this)?.let { session ->
