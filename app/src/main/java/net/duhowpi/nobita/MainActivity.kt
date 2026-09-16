@@ -103,8 +103,9 @@ class MainActivity : AppCompatActivity() {
                 val saveRaw = findViewById<android.widget.CheckBox>(R.id.save_raw).isChecked
                 val session = CaptureSession.load(this) ?: error("No active capture session")
                 val path = withWakeLock { userService?.exportPcapng(target, saveRaw, session.previousMode, session.bluetoothInitiallyEnabled) ?: error("Shizuku UserService is not connected") }
+                val uri = CaptureFileStore.importPcapng(this, path)
                 runOnUiThread {
-                    CaptureSession.clear(this); exportedUri = CaptureFileStore.importPcapng(this, path)
+                    CaptureSession.clear(this); exportedUri = uri
                     status.text = "PCAPNG exported: $path"; stopService(Intent(this, CaptureForegroundService::class.java)); resetButtons()
                     findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE
                 }
@@ -117,7 +118,8 @@ class MainActivity : AppCompatActivity() {
             try {
                 val session = CaptureSession.load(this) ?: error("No pending capture session")
                 val path = withWakeLock { userService?.exportFullCapture(session.previousMode, session.bluetoothInitiallyEnabled) ?: error("Shizuku UserService is not connected") }
-                runOnUiThread { CaptureSession.clear(this); exportedUri = CaptureFileStore.importPcapng(this, path); status.text = "Full PCAPNG exported"; findViewById<Button>(R.id.export_full).visibility = android.view.View.GONE; findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE; resetButtons() }
+                val uri = CaptureFileStore.importPcapng(this, path)
+                runOnUiThread { CaptureSession.clear(this); exportedUri = uri; status.text = "Full PCAPNG exported"; findViewById<Button>(R.id.export_full).visibility = android.view.View.GONE; findViewById<LinearLayout>(R.id.export_actions).visibility = android.view.View.VISIBLE; resetButtons() }
             } catch (error: Exception) { runOnUiThread { status.text = error.message ?: "Full export failed" } }
         }.start()
     }
