@@ -58,3 +58,4 @@
 - Hide completed-capture actions while a new capture starts.
 - Keep finalization controls in a consistent position.
 - Simplify the main screen by removing technical endpoint details.
+- Fixed sharing captures by forwarding the temporary file's read permission to the selected app.

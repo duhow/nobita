@@ -2,6 +2,7 @@ package net.duhowpi.nobita
 
 import android.os.Bundle
 import android.content.ComponentName
+import android.content.ClipData
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
@@ -370,10 +371,16 @@ class MainActivity : AppCompatActivity() {
     }
     private fun openOrShare(share: Boolean) {
         val uri = exportedUri ?: return
-        val intent = if (share) Intent(Intent.ACTION_SEND).apply { type = "application/vnd.tcpdump.pcap"; putExtra(Intent.EXTRA_STREAM, uri) }
+        val intent = if (share) Intent(Intent.ACTION_SEND).apply {
+            type = "application/vnd.tcpdump.pcap"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            clipData = ClipData.newRawUri("Bluetooth capture", uri)
+        }
             else Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.tcpdump.pcap")
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        startActivity(Intent.createChooser(intent, if (share) getString(R.string.share_capture) else getString(R.string.open_capture)))
+        startActivity(Intent.createChooser(intent, if (share) getString(R.string.share_capture) else getString(R.string.open_capture)).apply {
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        })
     }
 
     private fun bindUserService() {
