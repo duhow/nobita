@@ -36,7 +36,7 @@ class CaptureForegroundService : Service() {
         try { Shizuku.bindUserService(userServiceArgs(), object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
                 Thread {
-                    try { ICaptureUserService.Stub.asInterface(binder).exportPcapng(target) }
+                    try { ICaptureUserService.Stub.asInterface(binder).exportPcapng(target, false) }
                     finally {
                         if (wakeLock.isHeld) wakeLock.release()
                         Shizuku.unbindUserService(userServiceArgs(), this, true)

@@ -22,6 +22,7 @@
     <EditText android:id="@+id/target" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/capture_target_hint" />
     <Button android:id="@+id/choose_paired" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/choose_paired" />
     <Button android:id="@+id/scan_nearby" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/scan_nearby" />
+    <CheckBox android:id="@+id/save_raw" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/save_raw" />
     <Button android:id="@+id/start_capture" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/start_capture" />
     <Button android:id="@+id/stop_export" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/stop_export" android:visibility="gone" />
     <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content" />

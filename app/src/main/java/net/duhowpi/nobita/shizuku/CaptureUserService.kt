@@ -5,6 +5,9 @@ import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
 import java.util.zip.ZipFile
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import net.duhowpi.nobita.btsnoop.BtsnoopReader
 import net.duhowpi.nobita.hci.ConnectionTracker
 import net.duhowpi.nobita.hci.PacketFilter
@@ -25,7 +28,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
         return "uid=${Process.myUid()} mode=full"
     }
 
-    override fun exportPcapng(target: String): String {
+    override fun exportPcapng(target: String, saveRaw: Boolean): String {
         val lines = commandLines("/system/bin/bugreportz", "-p")
         val path = lines.firstOrNull { it.startsWith("OK:") }?.removePrefix("OK:")?.trim()
             ?: error(lines.lastOrNull { it.startsWith("FAIL:") } ?: "bugreportz did not complete")
@@ -39,7 +42,9 @@ class CaptureUserService : ICaptureUserService.Stub() {
             }
             File(path).delete()
             val directory = File("/sdcard/Download/BluetoothCaptures").apply { mkdirs() }
-            val output = File(directory, "capture-${System.currentTimeMillis()}.pcapng")
+            val base = (target.ifBlank { "Bluetooth" }).replace(Regex("[^A-Za-z0-9._-]"), "_").take(48)
+            val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+            val output = File(directory, "${base}_$stamp.pcapng")
             raw.inputStream().use { input -> PcapngWriter(output.outputStream()).use { writer ->
                 val tracker = ConnectionTracker()
                 for (record in BtsnoopReader.read(input)) {
@@ -48,6 +53,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
                 }
             } }
             PcapngValidator.validate(output)
+            if (saveRaw) raw.copyTo(File(directory, "${base}_$stamp.btsnoop"), overwrite = true)
             return output.absolutePath
         } finally {
             raw.delete()

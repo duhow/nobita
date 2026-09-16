@@ -97,7 +97,8 @@ class MainActivity : AppCompatActivity() {
         Thread {
             try {
                 val target = findViewById<android.widget.EditText>(R.id.target).text.toString()
-                val path = withWakeLock { userService?.exportPcapng(target) ?: error("Shizuku UserService is not connected") }
+                val saveRaw = findViewById<android.widget.CheckBox>(R.id.save_raw).isChecked
+                val path = withWakeLock { userService?.exportPcapng(target, saveRaw) ?: error("Shizuku UserService is not connected") }
                 runOnUiThread {
                     CaptureSession.clear(this); exportedFile = File(path)
                     status.text = "PCAPNG exported: $path"; stopService(Intent(this, CaptureForegroundService::class.java)); resetButtons()
