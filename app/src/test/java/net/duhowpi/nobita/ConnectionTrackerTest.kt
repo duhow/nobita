@@ -3,6 +3,7 @@ package net.duhowpi.nobita
 import net.duhowpi.nobita.btsnoop.BtsnoopRecord
 import net.duhowpi.nobita.hci.ConnectionTracker
 import net.duhowpi.nobita.hci.PacketFilter
+import net.duhowpi.nobita.hci.DeviceTarget
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -19,6 +20,7 @@ class ConnectionTrackerTest {
         val connection = tracker.connectionFor(BtsnoopRecord(3, 0, 1, byteArrayOf(0x02, 0x42, 0x00)))
         assertEquals("F1:E2:D3:C4:B5:A6", connection?.address)
         assertTrue(PacketFilter.matches(event, connection, "F1:E2"))
+        assertTrue(DeviceTarget.fromQuery("F1:E2:D3:C4:B5:A6").matches(connection))
     }
 
     @Test fun associatesClassicRemoteNameBeforeConnection() {

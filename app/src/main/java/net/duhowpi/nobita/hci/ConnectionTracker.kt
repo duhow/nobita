@@ -59,8 +59,6 @@ class ConnectionTracker {
 object PacketFilter {
     fun matches(record: BtsnoopRecord, connection: Connection?, target: String?): Boolean {
         if (target.isNullOrBlank()) return true
-        val normalized = target.replace(":", "").replace("-", "").lowercase()
-        return connection?.address?.replace(":", "")?.lowercase()?.contains(normalized) == true ||
-            connection?.name?.lowercase()?.contains(target.lowercase()) == true
+        return DeviceTarget.fromQuery(target).matches(connection)
     }
 }
