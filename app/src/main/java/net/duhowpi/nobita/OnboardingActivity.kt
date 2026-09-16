@@ -99,7 +99,7 @@ class OnboardingActivity : AppCompatActivity() {
     }
 
     private fun setPermissionState(status: TextView, check: ImageView, action: Button, granted: Boolean, required: Boolean) {
-        check.visibility = if (granted) View.VISIBLE else View.GONE
+        check.visibility = if (granted) View.VISIBLE else View.INVISIBLE
         status.visibility = if (granted) View.GONE else View.VISIBLE
         if (!granted) status.text = getString(if (required) R.string.onboarding_required else R.string.onboarding_optional)
         action.visibility = if (granted) View.GONE else View.VISIBLE

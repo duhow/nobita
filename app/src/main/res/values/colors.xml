@@ -1,3 +1,4 @@
 <resources>
     <color name="capture_active_blue">#1976D2</color>
+    <color name="onboarding_success">#4CAF50</color>
 </resources>

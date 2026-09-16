@@ -23,4 +23,5 @@
 - Fixed full capture export failures for controller-to-host packets.
 - Showed the processed packet count after full capture export.
 - Added visible export progress stages and clearer onboarding permission states.
+- Made onboarding permission checks visible in dark mode and fixed their title alignment.
 - Kept exports valid when Android BTSnoop records arrive slightly out of timestamp order.
