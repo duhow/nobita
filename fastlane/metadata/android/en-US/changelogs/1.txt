@@ -41,3 +41,4 @@
 - Re-enabled Stop & export for every new capture session.
 - Prevented duplicate exports from losing the staged PCAPNG and made generated filenames capture-unique.
 - Derived the capture staging package path from the application ID.
+- Aligned capture staging with Android’s resolved external-storage path.

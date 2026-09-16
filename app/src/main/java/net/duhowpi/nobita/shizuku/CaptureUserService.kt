@@ -1,6 +1,7 @@
 package net.duhowpi.nobita.shizuku
 
 import android.os.Process
+import android.os.Environment
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File
@@ -254,7 +255,8 @@ class CaptureUserService : ICaptureUserService.Stub() {
     }
 
     private fun captureDirectory() = File(
-        "/sdcard/Android/data/${net.duhowpi.nobita.BuildConfig.APPLICATION_ID}/files/BluetoothCaptures",
+        Environment.getExternalStorageDirectory(),
+        "Android/data/${net.duhowpi.nobita.BuildConfig.APPLICATION_ID}/files/BluetoothCaptures",
     ).apply { mkdirs() }
 
     private fun recoverInterruptedParts() {
