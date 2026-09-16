@@ -126,9 +126,19 @@ class CaptureUserService : ICaptureUserService.Stub() {
         var result: String? = null
         try {
             exportProgress = "Finalizing BTSnoop…"
-            val recovery = BtsnoopFileRecovery.truncateToCompleteRecords(raw)
-            check(!recovery.malformedRecord) { "Malformed BTSnoop record; raw capture preserved" }
-            check(recovery.records > 0) { "No Bluetooth packets were received; raw capture preserved" }
+            val recovery = runCatching { BtsnoopFileRecovery.truncateToCompleteRecords(raw) }
+                .getOrElse {
+                    preserveRawFile(raw, id)
+                    throw it
+                }
+            if (recovery.malformedRecord) {
+                preserveRawFile(raw, id)
+                error("Malformed BTSnoop record; raw capture preserved")
+            }
+            if (recovery.records == 0L) {
+                raw.delete()
+                error("No Bluetooth packets were received; raw capture discarded")
+            }
             val finalized = File(captureDirectory(), ".capture-$id.btsnoop")
             if (!raw.renameTo(finalized)) {
                 raw.copyTo(finalized, overwrite = true)
@@ -182,8 +192,7 @@ class CaptureUserService : ICaptureUserService.Stub() {
             converted = true
             return generated.absolutePath
         } finally {
-            if (!converted) raw.copyTo(File(directory, ".pending-$id.btsnoop"), overwrite = true)
-            if (converted) raw.delete()
+            if (converted) raw.delete() else preserveRawFile(raw, id)
             if (!converted) generated.delete()
         }
     }
@@ -264,17 +273,17 @@ class CaptureUserService : ICaptureUserService.Stub() {
                 raw.delete()
                 return
             }
-            val pending = File(captureDirectory(), ".pending-$id.btsnoop")
-            if (!raw.renameTo(pending)) {
-                raw.copyTo(pending, overwrite = true)
-                raw.delete()
-            }
+            preserveRawFile(raw, id)
         }.onFailure {
-            val pending = File(captureDirectory(), ".pending-$id.btsnoop")
-            if (!raw.renameTo(pending)) {
-                raw.copyTo(pending, overwrite = true)
-                raw.delete()
-            }
+            runCatching { preserveRawFile(raw, id) }
+        }
+    }
+
+    private fun preserveRawFile(raw: File, id: String) {
+        val pending = File(captureDirectory(), ".pending-$id.btsnoop")
+        if (!raw.renameTo(pending)) {
+            raw.copyTo(pending, overwrite = true)
+            check(raw.delete() || !raw.exists()) { "Unable to remove temporary capture file: ${raw.name}" }
         }
     }
 
@@ -297,11 +306,10 @@ class CaptureUserService : ICaptureUserService.Stub() {
                     return@runCatching
                 }
                 val id = raw.name.removePrefix(".active-").removeSuffix(".btsnoop.part")
-                val pending = File(captureDirectory(), ".pending-$id.btsnoop")
-                if (!raw.renameTo(pending)) {
-                    raw.copyTo(pending, overwrite = true)
-                    raw.delete()
-                }
+                preserveRawFile(raw, id)
+            }.onFailure {
+                val id = raw.name.removePrefix(".active-").removeSuffix(".btsnoop.part")
+                runCatching { preserveRawFile(raw, id) }
             }
         }
     }
