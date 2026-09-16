@@ -21,4 +21,18 @@
     <string name="battery_settings">Battery optimization settings</string>
     <string name="choose_recent">Choose recent target</string>
     <string name="no_recent_targets">No recent targets.</string>
+    <string name="onboarding_title">Set up Nobita</string>
+    <string name="onboarding_description">Grant the required access before capturing Bluetooth traffic. Notifications and battery exemption are optional but recommended for reliable background capture.</string>
+    <string name="onboarding_shizuku_title">Shizuku</string>
+    <string name="onboarding_bluetooth_title">Nearby devices</string>
+    <string name="onboarding_notifications_title">Notifications</string>
+    <string name="onboarding_battery_title">Battery optimization</string>
+    <string name="onboarding_required">Required</string>
+    <string name="onboarding_optional">Optional</string>
+    <string name="onboarding_available">Available</string>
+    <string name="onboarding_setup">Set up Shizuku</string>
+    <string name="onboarding_shizuku_missing">Install and start Shizuku first</string>
+    <string name="onboarding_allow">Allow access</string>
+    <string name="onboarding_open_settings">Open settings</string>
+    <string name="onboarding_next">Continue to Nobita</string>
 </resources>

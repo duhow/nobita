@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="24dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/onboarding_title" android:textAppearance="?attr/textAppearanceHeadlineMedium" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/onboarding_description" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="24dp" android:text="@string/onboarding_shizuku_title" android:textAppearance="?attr/textAppearanceTitleMedium" />
+        <TextView android:id="@+id/onboarding_shizuku_status" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <Button android:id="@+id/onboarding_shizuku" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/onboarding_setup" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="@string/onboarding_bluetooth_title" android:textAppearance="?attr/textAppearanceTitleMedium" />
+        <TextView android:id="@+id/onboarding_bluetooth_status" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <Button android:id="@+id/onboarding_bluetooth" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/onboarding_allow" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="@string/onboarding_notifications_title" android:textAppearance="?attr/textAppearanceTitleMedium" />
+        <TextView android:id="@+id/onboarding_notification_status" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <Button android:id="@+id/onboarding_notifications" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/onboarding_allow" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="@string/onboarding_battery_title" android:textAppearance="?attr/textAppearanceTitleMedium" />
+        <TextView android:id="@+id/onboarding_battery_status" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <Button android:id="@+id/onboarding_battery" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/onboarding_open_settings" />
+        <Button android:id="@+id/onboarding_next" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="24dp" android:text="@string/onboarding_next" />
+    </LinearLayout>
+</ScrollView>
