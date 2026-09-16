@@ -1,6 +1,7 @@
 package net.duhowpi.nobita.shizuku
 
 import android.os.Process
+import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -183,11 +184,11 @@ class CaptureUserService : ICaptureUserService.Stub() {
             active != null -> {
                 val status = active.status()
                 val state = if (status.terminalReason == null) "CAPTURING" else "INTERRUPTED"
-                "$state captureId=${captureId ?: "unknown"} bytes=${status.bytesReceived} lastDataAt=${status.lastDataAt} reason=${status.terminalReason ?: "none"}"
+                captureStatusJson(state, status.bytesReceived, status.lastDataAt, status.terminalReason?.name)
             }
-            exportRunning -> "EXPORTING captureId=${captureId ?: "unknown"}"
-            completedExport != null -> "COMPLETED"
-            else -> "IDLE"
+            exportRunning -> captureStatusJson("EXPORTING", 0, 0, null)
+            completedExport != null -> captureStatusJson("COMPLETED", 0, 0, null)
+            else -> captureStatusJson("IDLE", 0, 0, null)
         }
     }
     override fun hasPendingCapture(): Boolean = captureDirectory()
@@ -236,6 +237,15 @@ class CaptureUserService : ICaptureUserService.Stub() {
     private fun captureDirectory() = File(
         "/sdcard/Android/data/net.duhowpi.nobita/files/BluetoothCaptures",
     ).apply { mkdirs() }
+
+    private fun captureStatusJson(state: String, bytes: Long, lastDataAt: Long, reason: String?): String = JSONObject()
+        .put("version", 1)
+        .put("state", state)
+        .put("captureId", captureId ?: JSONObject.NULL)
+        .put("bytes", bytes)
+        .put("lastDataAt", lastDataAt)
+        .put("reason", reason ?: JSONObject.NULL)
+        .toString()
 
     private fun formatHandles(handles: Set<Int>) = handles.sorted().joinToString(",") { "0x%04X".format(Locale.US, it) }.ifEmpty { "none" }
     private fun command(vararg args: String): String = commandLines(*args).joinToString("\n")

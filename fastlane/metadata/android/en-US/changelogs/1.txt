@@ -29,3 +29,4 @@
 - Kept exports valid when Android BTSnoop records arrive slightly out of timestamp order.
 - Surface unexpected live stream interruptions and recoverable packet progress.
 - Bound full-capture recovery to the original capture session.
+- Exposed capture status through a versioned machine-readable response.

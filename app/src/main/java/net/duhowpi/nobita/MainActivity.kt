@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.Build
 import android.content.pm.PackageManager
+import org.json.JSONObject
 import android.widget.Button
 import android.widget.TextView
 import android.widget.LinearLayout
@@ -53,9 +54,9 @@ class MainActivity : AppCompatActivity() {
             val session = CaptureSession.load(this@MainActivity)
             val service = userService
             if (session?.stage == CaptureStage.CAPTURING && service != null) {
-                val captureStatus = runCatching { service.getCaptureStatus() }.getOrNull()
-                if (captureStatus?.startsWith("CAPTURING") == true || captureStatus?.startsWith("INTERRUPTED") == true) {
-                    status.text = if (captureStatus.startsWith("INTERRUPTED")) "Capture interrupted: $captureStatus" else "Capture active: $captureStatus"
+                val captureStatus = runCatching { service.getCaptureStatus() }.getOrNull()?.let(::parseCaptureStatus)
+                if (captureStatus?.state == "CAPTURING" || captureStatus?.state == "INTERRUPTED") {
+                    status.text = captureStatusText(captureStatus)
                 }
                 captureStatusHandler.postDelayed(this, 1_000)
             }
@@ -74,8 +75,10 @@ class MainActivity : AppCompatActivity() {
             userService = ICaptureUserService.Stub.asInterface(service)
             status.text = "Shizuku connected (uid checked on start)"
             Thread {
-                val captureStatus = runCatching { userService?.getCaptureStatus() }.getOrNull()
-                if (captureStatus?.startsWith("CAPTURING") == true) runOnUiThread { status.text = "Capture active: $captureStatus" }
+                val captureStatus = runCatching { userService?.getCaptureStatus() }.getOrNull()?.let(::parseCaptureStatus)
+                if (captureStatus?.state == "CAPTURING" || captureStatus?.state == "INTERRUPTED") {
+                    runOnUiThread { status.text = captureStatusText(captureStatus) }
+                }
             }.start()
             reconcilePendingSession()
         }
@@ -265,6 +268,22 @@ class MainActivity : AppCompatActivity() {
         captureStatusHandler.removeCallbacks(captureStatusUpdater)
         captureStatusHandler.post(captureStatusUpdater)
     }
+    private fun parseCaptureStatus(value: String) = runCatching {
+        JSONObject(value).takeIf { it.optInt("version") == 1 }?.let {
+            CaptureStatusView(
+                it.optString("state"),
+                it.optLong("bytes"),
+                it.optLong("lastDataAt"),
+                it.optString("reason").takeUnless { reason -> reason.isBlank() || reason == "null" },
+            )
+        }
+    }.getOrNull()
+    private fun captureStatusText(value: CaptureStatusView): String = if (value.state == "INTERRUPTED") {
+        "Capture interrupted: ${value.reason ?: "unknown"} (${value.bytes} bytes)"
+    } else {
+        "Capture active: ${value.bytes} bytes${if (value.lastDataAt > 0) ", last data ${value.lastDataAt}" else ""}"
+    }
+    private data class CaptureStatusView(val state: String, val bytes: Long, val lastDataAt: Long, val reason: String?)
     private fun showCaptureActive() {
         captureTopBar.setBackgroundColor(ContextCompat.getColor(this, R.color.capture_active_blue))
         captureTopStatus.setTextColor(android.graphics.Color.WHITE)
