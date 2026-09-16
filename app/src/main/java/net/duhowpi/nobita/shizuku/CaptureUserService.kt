@@ -13,6 +13,7 @@ import net.duhowpi.nobita.btsnoop.BtsnoopReader
 import net.duhowpi.nobita.btsnoop.BtsnoozDecoder
 import net.duhowpi.nobita.hci.ConnectionTracker
 import net.duhowpi.nobita.hci.PacketFilter
+import net.duhowpi.nobita.hci.HciPacketClassifier
 import net.duhowpi.nobita.pcapng.PcapngWriter
 import net.duhowpi.nobita.pcapng.PcapngValidator
 
@@ -72,16 +73,18 @@ class CaptureUserService : ICaptureUserService.Stub() {
             var written = 0
             var total = 0
             val handles = mutableSetOf<Int>()
+            var attPackets = 0
             rawFile.inputStream().use { input -> PcapngWriter(generated.outputStream()).use { writer ->
                 val tracker = ConnectionTracker()
                 for (record in BtsnoopReader.read(input)) {
                     val connection = tracker.connectionFor(record)
                     total++
                     connection?.let { handles += it.handle }
+                    if (HciPacketClassifier.isAttPacket(record.packet)) attPackets++
                     if (PacketFilter.matches(record, connection, target)) { writer.write(record); written++ }
                 }
             } }
-            lastExportSummary = "Packets: $total; target packets: $written; connections: ${handles.size}"
+            lastExportSummary = "Packets: $total; target packets: $written; connections: ${handles.size}; ATT packets: $attPackets"
             if (target.isNotBlank() && written == 0) error("No packets matched target; raw capture preserved for full export")
             PcapngValidator.validate(generated)
             if (saveRaw) rawFile.copyTo(File(directory, "${base}_$stamp.btsnoop"), overwrite = true)
@@ -106,11 +109,17 @@ class CaptureUserService : ICaptureUserService.Stub() {
         val output = File(directory, "Bluetooth_${System.currentTimeMillis()}.pcapng")
         try {
             var total = 0
+            var attPackets = 0
             val tracker = ConnectionTracker()
             raw.inputStream().use { input -> PcapngWriter(output.outputStream()).use { writer ->
-                BtsnoopReader.read(input).forEach { record -> tracker.connectionFor(record); writer.write(record); total++ }
+                BtsnoopReader.read(input).forEach { record ->
+                    tracker.connectionFor(record)
+                    if (HciPacketClassifier.isAttPacket(record.packet)) attPackets++
+                    writer.write(record)
+                    total++
+                }
             } }
-            lastExportSummary = "Packets: $total; target packets: $total; connections: ${tracker.connectionCount()}"
+            lastExportSummary = "Packets: $total; target packets: $total; connections: ${tracker.connectionCount()}; ATT packets: $attPackets"
             PcapngValidator.validate(output)
             raw.delete()
             return output.absolutePath
